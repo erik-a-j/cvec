@@ -84,6 +84,23 @@ typedef struct cvec_t {
     cvec_hooks_t fn;    /*hooks for fine control over how instance of cvec_t is handled, see `struct cvec_hooks_t`*/
 } cvec_t;
 
+#define CVEC_GROW_ERROR 0
+#define CVEC_NMEMB_MAX(memb_size) ((memb_size) ? (SIZE_MAX / (memb_size)) : 0)
+static size_t cvec_grow(size_t old_nmemb, size_t new_nmemb, size_t memb_size) {
+    if (memb_size == 0)
+        return CVEC_GROW_ERROR;
+    if (old_nmemb >= new_nmemb)
+        return (old_nmemb <= CVEC_NMEMB_MAX(memb_size))? old_nmemb : CVEC_GROW_ERROR;
+
+    size_t n = old_nmemb ? old_nmemb + old_nmemb/(size_t)2 + (size_t)1 : (size_t)8;
+    if (n < old_nmemb) n = CVEC_NMEMB_MAX(memb_size);
+    if (n < new_nmemb) n = new_nmemb;
+
+    if (n > CVEC_NMEMB_MAX(memb_size))
+        return CVEC_GROW_ERROR;
+    return n;
+}
+
 /**
  * @brief 
  * `cvec_*` functions requires that __All__ of the __hooks__ must be valid `pointer to function`.  
@@ -136,22 +153,6 @@ static inline void cvec_init(cvec_t *vec, size_t memb_size, cvec_hooks_t hooks) 
 static inline size_t cvec_capacity(const cvec_t *vec) { return vec->nmemb_cap * vec->memb_size; }
 static inline size_t cvec_size(const cvec_t *vec) { return vec->nmemb * vec->memb_size; }
 
-#define CVEC_GROW_ERROR 0
-#define CVEC_NMEMB_MAX(memb_size) ((memb_size) ? (SIZE_MAX / (memb_size)) : 0)
-static size_t cvec_grow(size_t old_nmemb, size_t new_nmemb, size_t memb_size) {
-    if (memb_size == 0)
-        return CVEC_GROW_ERROR;
-    if (old_nmemb >= new_nmemb)
-        return (old_nmemb <= CVEC_NMEMB_MAX(memb_size))? old_nmemb : CVEC_GROW_ERROR;
-
-    size_t n = old_nmemb ? old_nmemb + old_nmemb/(size_t)2 + (size_t)1 : (size_t)8;
-    if (n < old_nmemb) n = CVEC_NMEMB_MAX(memb_size);
-    if (n < new_nmemb) n = new_nmemb;
-
-    if (n > CVEC_NMEMB_MAX(memb_size))
-        return CVEC_GROW_ERROR;
-    return n;
-}
 
 /*** + Internal Helpers ***/
 static inline void *cvec_raw_realloc(cvec_t *vec, size_t size) {

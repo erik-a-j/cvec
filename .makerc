@@ -1,0 +1,6 @@
+
+alias make='bear_make'
+
+bear_make() {
+    bear --append -- /usr/bin/make "$@"
+}

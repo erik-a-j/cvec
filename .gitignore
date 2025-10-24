@@ -1,6 +1,4 @@
 **/.vscode
 compile_commands.json
 test_cvec
-test.c
 test.o
-.makerc

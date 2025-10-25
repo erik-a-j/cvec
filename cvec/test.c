@@ -1,7 +1,6 @@
 
-#include "cvec.h"
+#include "../cvec.h"
 #include <stdio.h>
-
 
 int main(void) {
     cvec_hooks_t h = cvec_hooks_init();

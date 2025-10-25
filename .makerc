@@ -10,8 +10,6 @@ bear_make() {
     else
         /usr/bin/make "$@"
         ec=$?
-        [[ $1 == "clean" && -f ./compile_commands.json ]] \
-        && rm ./compile_commands.json
     fi
     return $ec
 }

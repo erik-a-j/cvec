@@ -9,6 +9,13 @@
 #ifndef CVEC_CUSTOM_ALLOCATORS
 # include <stdlib.h>
 #endif
+#ifndef NDEBUG
+# include <stdio.h>
+# include <string.h>
+#endif
+#ifdef _STDIO_H
+# include <stdarg.h>
+#endif
 
 enum cvec_error_t {
     ECVEC_NONE               = 0u
@@ -149,10 +156,8 @@ static inline void cvec_init(cvec_t *vec, size_t memb_size, cvec_hooks_t hooks) 
     vec->fn = hooks;
 }
 
-
 static inline size_t cvec_capacity(const cvec_t *vec) { return vec->nmemb_cap * vec->memb_size; }
 static inline size_t cvec_size(const cvec_t *vec) { return vec->nmemb * vec->memb_size; }
-
 
 /*** + Internal Helpers ***/
 static inline void *cvec_raw_realloc(cvec_t *vec, size_t size) {
@@ -178,7 +183,7 @@ static inline void cvec_free(cvec_t *vec) {
     vec->data = NULL;
     vec->nmemb_cap = vec->nmemb = 0;
 }
-static inline int cvec_resize(cvec_t *vec, size_t nmemb) {
+static int cvec_resize(cvec_t *vec, size_t nmemb) {
     if (nmemb == vec->nmemb_cap) return 0;
     if (nmemb == 0) {
         if (vec->data) cvec_raw_free(vec, vec->data);
@@ -202,7 +207,7 @@ static inline int cvec_resize(cvec_t *vec, size_t nmemb) {
         vec->nmemb = vec->nmemb_cap;
     return 0;
 }
-static inline int cvec_reserve(cvec_t *vec, size_t nmemb) {
+static int cvec_reserve(cvec_t *vec, size_t nmemb) {
     if (nmemb == 0 || nmemb <= vec->nmemb_cap) return 0;
     
     if (!vec->fn.grow) {
@@ -224,13 +229,19 @@ static inline int cvec_shrink(cvec_t *vec, size_t nmemb) {
     return cvec_resize(vec, nmemb);
 }
 
-
+static inline void *cvec_steal(cvec_t *vec) {
+    if (vec->error) return NULL;
+    if (!vec->data) return NULL;
+    void *stolen = vec->data;
+    vec->data = NULL;
+    vec->nmemb_cap = vec->nmemb = 0;
+    return stolen;
+}
 
 static inline void *cvec_at(const cvec_t *vec, size_t index) {
     return (index < vec->nmemb_cap)? (char*)vec->data + index * vec->memb_size : NULL;
 }
-
-static inline int cvec_push_back(cvec_t *vec, const void *elem) {
+static int cvec_push_back(cvec_t *vec, const void *elem) {
     if (cvec_reserve(vec, vec->nmemb+1) != 0)
         return -1;
     if (!cvec_raw_memcpy(vec, (char*)vec->data + vec->nmemb * vec->memb_size, elem, vec->memb_size))
@@ -238,7 +249,7 @@ static inline int cvec_push_back(cvec_t *vec, const void *elem) {
     vec->nmemb += 1;
     return 0;
 }
-static inline int cvec_push_back_n(cvec_t *vec, const void *src, size_t count) {
+static int cvec_push_back_n(cvec_t *vec, const void *src, size_t count) {
     if (count == 0) return 0;
     size_t want = vec->nmemb + count;
     if (want < vec->nmemb) {
@@ -252,5 +263,85 @@ static inline int cvec_push_back_n(cvec_t *vec, const void *src, size_t count) {
     vec->nmemb = want;
     return 0;
 }
+#ifdef _STRING_H
+static inline int cvec_push_back_str(cvec_t *vec, const char *str) {
+    size_t len_str = strlen(str);
+    return cvec_push_back_n(vec, str, len_str);
+}
+#endif
+#ifdef _STDIO_H
+static int cvec_push_back_vfmt(cvec_t *vec, const char *fmt, ...) {
+    if (vec->memb_size != 1) return -1;
+    va_list ap;
+    va_start(ap, fmt);
+
+    va_list ap2;
+    va_copy(ap2, ap);
+    int needed = vsnprintf(NULL, 0, fmt, ap2);
+    va_end(ap2);
+    if (needed < 0) {
+        va_end(ap);
+        return -1;
+    }
+
+    if (cvec_reserve(vec, vec->nmemb + (size_t)needed+1) != 0) {
+        va_end(ap);
+        return -1;
+    }
+
+    int written = vsnprintf((char*)vec->data + vec->nmemb * vec->memb_size, (size_t)needed+1, fmt, ap);
+    va_end(ap);
+    if (written < 0) return -1;
+
+    vec->nmemb += (size_t)written;
+    return 0;
+}
+#endif
+
+
+#ifndef NDEBUG
+#define CVEC_AS_PTR(vec)      \
+    _Generic((vec),           \
+        cvec_t: &(vec),       \
+        const cvec_t: &(vec), \
+        cvec_t*: (vec),       \
+        const cvec_t*: (vec)  \
+    )
+#define cvec_push_back_strliteral(vec, strliteral) \
+    cvec_push_back_n(vec, strliteral, sizeof(strliteral)-1)
+#define cvec_dump(vec) \
+    cvec_dump_with_name(CVEC_AS_PTR(vec), #vec)
+
+static inline char *cvec_dump_with_name(cvec_t *vec, const char *name) {
+    char *dump = NULL;
+    cvec_t d;
+    cvec_init(&d, sizeof(char), vec->fn);
+    cvec_reserve(&d, 1024);
+    
+    if (cvec_push_back_str(&d, name) != 0) goto End;
+    if (cvec_push_back_strliteral(&d, ": {\n") != 0) goto End;
+    if (cvec_push_back_vfmt(&d, "  .memb_size: %zu,\n", vec->memb_size) != 0) goto End;
+    if (cvec_push_back_vfmt(&d, "  .nmemb_cap: %zu,\n", vec->nmemb_cap) != 0) goto End;
+    if (cvec_push_back_vfmt(&d, "  .nmemb: %zu,\n", vec->nmemb) != 0) goto End;
+    if (cvec_push_back_vfmt(&d, "  .error: %zu,\n", vec->error) != 0) goto End;
+    if (cvec_push_back_vfmt(&d, "  .fn.alloc: %p,\n", vec->fn.alloc) != 0) goto End;
+    if (cvec_push_back_vfmt(&d, "  .fn.realloc: %p,\n", vec->fn.realloc) != 0) goto End;
+    if (cvec_push_back_vfmt(&d, "  .fn.free: %p,\n", vec->fn.free) != 0) goto End;
+    if (cvec_push_back_vfmt(&d, "  .fn.grow: %p,\n", vec->fn.grow) != 0) goto End;
+    if (vec->memb_size == 1) {
+        if (cvec_push_back_vfmt(&d, "  .data:\n  [\n%.*s", vec->nmemb, vec->data) != 0) goto End;
+        if (*(char*)cvec_at(vec, vec->nmemb-1) != '\n') {
+            if (cvec_push_back_strliteral(&d, "\n") != 0) goto End;
+        }
+        if (cvec_push_back_strliteral(&d, "  ],\n") != 0) goto End;
+    }
+    if (cvec_push_back_strliteral(&d, "}\0") != 0) goto End;
+    
+    dump = cvec_steal(&d);
+End:
+    cvec_free(&d);
+    return dump;
+}
+#endif
 
 #endif /*CVEC_H*/

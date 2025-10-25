@@ -2,5 +2,16 @@
 alias make='bear_make'
 
 bear_make() {
-    bear --append -- /usr/bin/make "$@"
+    local ec=0
+    if [[ -z $1 ]]; then
+        echo "bear --append -- make:"
+        bear --append -- /usr/bin/make "$@"
+        ec=$?
+    else
+        /usr/bin/make "$@"
+        ec=$?
+        [[ $1 == "clean" && -f ./compile_commands.json ]] \
+        && rm ./compile_commands.json
+    fi
+    return $ec
 }

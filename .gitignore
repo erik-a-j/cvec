@@ -1,4 +1,5 @@
 **/.vscode
-compile_commands.json
-test_cvec
-test.o
+**/out
+**/compile_commands.json
+**/test*
+!test.c

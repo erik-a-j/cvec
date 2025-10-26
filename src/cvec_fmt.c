@@ -1,10 +1,10 @@
-#include "../cvec.h"
+#include "cvec/cvec_impl.h"
 #include <stdio.h>
 #include <stdarg.h>
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wformat-nonliteral"
-int cvec_push_back_vfmt(cvec_t *vec, const char *fmt, ...) {
+int cvec_push_back_fmt(cvec_t *vec, const char *fmt, ...) {
     if (vec->memb_size != 1) return -1;
     va_list ap;
     va_start(ap, fmt);

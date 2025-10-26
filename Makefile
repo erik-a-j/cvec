@@ -28,7 +28,27 @@ $(info ℹ️ $(BOLD)$(BLUE)$(1)$(RESET))
 endef
 
 # ── Build mode (debug|release) ────────────────────────────────────────────────
-MODE ?= debug
+MODE   ?= debug
+STATIC ?= 0
+SHARED ?= 0
+
+# Normalize SHARED/STATIC to 0/1
+BOOL = $(if $(filter 1 yes true on,$(strip $(1))),1,0)
+SHARED := $(call BOOL,$(SHARED))
+STATIC := $(call BOOL,$(STATIC))
+
+# Defaults per MODE when user didn't ask for either
+ifeq ($(MODE),release)
+  ifeq ($(SHARED)$(STATIC),00)
+    STATIC := 1
+  endif
+else
+  # debug (default): build both unless overridden
+  ifeq ($(SHARED)$(STATIC),00)
+    SHARED := 1
+    STATIC := 1
+  endif
+endif
 
 CC      ?= gcc
 CSTD    := -std=c11
@@ -204,14 +224,44 @@ TEST_STATIC := $(TESTDIR)/test_$(LIBNAME)_static
 
 DEPS := $(LIBOBJ:.o=.d) $(LIBOBJ_PIC:.o=.d) $(TESTOBJ:.o=.d)
 
-# ── Default ───────────────────────────────────────────────────────────────────
-.PHONY: all
-all: static shared tests
+# Which library targets to build
+BUILD_LIBS :=
+ifeq ($(STATIC),1)
+  BUILD_LIBS += static
+endif
+ifeq ($(SHARED),1)
+  BUILD_LIBS += shared
+endif
 
-.PHONY: static shared test-static test-shared tests
+BUILD_TESTS :=
+ifeq ($(MODE),debug)
+  BUILD_TESTS += tests
+endif
+
+# Which tests to build
+TEST_BINS :=
+ifeq ($(SHARED),1)
+  TEST_BINS += $(TEST_SHARED)
+endif
+ifeq ($(STATIC),1)
+  TEST_BINS += $(TEST_STATIC)
+endif
+
+# Which "run" is the default
+RUN_DEFAULT :=
+ifeq ($(SHARED),1)
+  RUN_DEFAULT := run-shared
+else ifeq ($(STATIC),1)
+  RUN_DEFAULT := run-static
+endif
+
+# ── Default ───────────────────────────────────────────────────────────────────
+.PHONY: all static shared tests test-static test-shared
+all: $(BUILD_LIBS) $(BUILD_TESTS)
+
 static: $(STATICLIB)
 shared: $(SO_REAL)
-tests:  $(TEST_SHARED) $(TEST_STATIC)
+tests:  $(TEST_BINS)
 test-static:  $(TEST_STATIC)
 test-shared:  $(TEST_SHARED)
 
@@ -261,12 +311,33 @@ $(OBJDIR):
 $(RELEASEDIR):
 	@mkdir -p $@
 
-.PHONY: release
+.PHONY: release release-static release-shared copy-headers copy-lib api-header
 release:
-	$(MAKE) MODE=release static shared copy-headers api_header
+	$(MAKE) MODE=release all copy-headers copy-lib api-header 
+release-static:
+	$(MAKE) MODE=release STATIC=1 SHARED=0 all copy-headers copy-lib api-header 
+release-shared:
+	$(MAKE) MODE=release STATIC=0 SHARED=1 all copy-headers copy-lib api-header 
+
+copy-headers:
+	"$(tools_dir)/header_names.sh" $(DEFINES) | \
+	"$(tools_dir)/copy_headers.sh" "$(RELEASEDIR)/include"
+
+copy-lib:
+	@mkdir -p $(RELEASEDIR)/lib
+ifeq ($(SHARED),1)
+	@cp -p -- $(SO_REAL) $(SO_LINK) $(SO_SHORT) $(RELEASEDIR)/lib
+endif
+ifeq ($(STATIC),1)
+	@cp -p -- $(STATICLIB) $(RELEASEDIR)/lib
+endif
+
+api-header:
+	"$(tools_dir)/header_names.sh" $(DEFINES) | \
+	"$(tools_dir)/make_api_header.sh" "$(RELEASEDIR)/include/cvec.h"
 
 # ── Convenience ───────────────────────────────────────────────────────────────
-.PHONY: run run-shared run-static clean copy-headers api_header
+.PHONY: run run-shared run-static clean 
 run: run-shared
 run-shared: $(TEST_SHARED)
 	@echo "  RUN     $<"
@@ -279,14 +350,5 @@ run-static: $(TEST_STATIC)
 clean:
 	@echo "  CLEAN   objects & deps"
 	rm -rf $(OUTDIR)
-
-copy-headers:
-	"$(tools_dir)/header_names.sh" $(DEFINES) | \
-	"$(tools_dir)/copy_headers.sh" "$(RELEASEDIR)/include"
-
-api_header:
-	"$(tools_dir)/header_names.sh" $(DEFINES) | \
-	"$(tools_dir)/make_api_header.sh" "$(RELEASEDIR)/include/cvec.h"
-
 
 -include $(DEPS)

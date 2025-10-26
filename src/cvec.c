@@ -1,10 +1,7 @@
-#include "../cvec.h"
+#include "cvec/cvec_impl.h"
+#include <stdint.h>
 
-typedef struct cvec_internal_t {
-    cvec_hooks_t hooks;
-    cvec_error_t error;
-} *cvec_internal;
-
+#define CVEC_NMEMB_MAX(memb_size) ((memb_size) ? (SIZE_MAX / (memb_size)) : 0)
 size_t cvec_default_grow(size_t old_nmemb, size_t new_nmemb, size_t memb_size) {
     if (memb_size == 0)
         return 0;
@@ -121,37 +118,3 @@ int cvec_push_back_n(cvec_t *vec, const void *src, size_t count) {
     vec->nmemb = want;
     return 0;
 }
-
-
-#ifdef USE_PUSH_BACK_VFMT
-char *cvec_dump_with_name(cvec_t *vec, const char *name) {
-    char *dump = NULL;
-    cvec_t d;
-    cvec_init(&d, sizeof(char), vec->_->hooks);
-    cvec_reserve(&d, 1024);
-    
-    if (cvec_push_back_str(&d, name) != 0) goto End;
-    if (cvec_push_back_strliteral(&d, ": {\n") != 0) goto End;
-    if (cvec_push_back_vfmt(&d, "  .memb_size: %zu,\n", vec->memb_size) != 0) goto End;
-    if (cvec_push_back_vfmt(&d, "  .nmemb_cap: %zu,\n", vec->nmemb_cap) != 0) goto End;
-    if (cvec_push_back_vfmt(&d, "  .nmemb: %zu,\n", vec->nmemb) != 0) goto End;
-    if (cvec_push_back_vfmt(&d, "  ._->error: %zu,\n", vec->_->error) != 0) goto End;
-    if (cvec_push_back_vfmt(&d, "  ._->hooks.alloc: %p,\n", vec->_->hooks.alloc) != 0) goto End;
-    if (cvec_push_back_vfmt(&d, "  ._->hooks.realloc: %p,\n", vec->_->hooks.realloc) != 0) goto End;
-    if (cvec_push_back_vfmt(&d, "  ._->hooks.free: %p,\n", vec->_->hooks.free) != 0) goto End;
-    if (cvec_push_back_vfmt(&d, "  ._->hooks.grow: %p,\n", vec->_->hooks.grow) != 0) goto End;
-    if (vec->memb_size == 1) {
-        if (cvec_push_back_vfmt(&d, "  .data:\n  [\n%.*s", vec->nmemb, vec->data) != 0) goto End;
-        if (*(char*)cvec_at(vec, vec->nmemb-1) != '\n') {
-            if (cvec_push_back_strliteral(&d, "\n") != 0) goto End;
-        }
-        if (cvec_push_back_strliteral(&d, "  ],\n") != 0) goto End;
-    }
-    if (cvec_push_back_strliteral(&d, "}\0") != 0) goto End;
-    
-    dump = cvec_steal(&d);
-End:
-    cvec_free(&d);
-    return dump;
-}
-#endif

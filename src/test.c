@@ -1,5 +1,6 @@
-
-#include "../cvec.h"
+#include <stdlib.h>
+#include <string.h>
+#include "cvec.h"
 #include <stdio.h>
 
 int main(void) {

@@ -19,24 +19,43 @@ DEPGEN  := -MMD -MP
 CFLAGS  := $(CSTD) $(WARN) $(OPTDBG) $(SAN) $(DEPGEN)
 LDFLAGS :=
 LDLIBS  := -lasan
+INC     := -Isrc
+DEFINES :=
 
 # ── Names and layout (NO SPACES inside these) ─────────────────────────────────
 LIBNAME      := cvec
 LIBVER_MAJOR := 1
 LIBVER       := 1.0.0
 
-SRCDIR  := $(current_dir)/cvec
+SRCDIR  := $(current_dir)/src
 OBJDIR  := $(current_dir)/out
 
 LIBSRC  := cvec.c
 TESTSRC := test.c
 
-USE_PUSH_BACK_VFMT ?= 1
 
-ifeq ($(USE_PUSH_BACK_VFMT),1)
-	CFLAGS += -DUSE_PUSH_BACK_VFMT
-	LIBSRC += cvec_vfmt.c
+USE_MACRO      ?= 1
+USE_STRING_EXT ?= 1
+USE_DUMP       ?= 1
+USE_FMT        ?= 1
+
+ifeq ($(USE_MACRO),1)
+	DEFINES += -DUSE_MACRO
 endif
+ifeq ($(USE_STRING_EXT),1)
+	DEFINES += -DUSE_STRING_EXT
+endif
+ifeq ($(filter 1,$(USE_DUMP))$(filter 1,$(USE_FMT)),11)
+	DEFINES += -DUSE_FMT -DUSE_DUMP
+	LIBSRC += cvec_fmt.c cvec_dump.c
+else
+	ifeq ($(USE_FMT),1)
+		DEFINES += -DUSE_FMT
+		LIBSRC += cvec_fmt.c
+	endif
+endif
+
+
 
 LIBOBJ     := $(addprefix $(OBJDIR)/,$(LIBSRC:.c=.o))
 LIBOBJ_PIC := $(addprefix $(OBJDIR)/,$(LIBSRC:.c=.pic.o))
@@ -57,7 +76,7 @@ DEPS := $(LIBOBJ:.o=.d) $(LIBOBJ_PIC:.o=.d) $(TESTOBJ:.o=.d)
 
 # ── Default ───────────────────────────────────────────────────────────────────
 .PHONY: all
-all: static shared tests
+all: static shared api_header tests
 
 .PHONY: static shared tests
 static: $(STATICLIB)
@@ -79,26 +98,26 @@ $(SO_REAL): $(LIBOBJ_PIC) | $(OBJDIR)
 # ── Tests ─────────────────────────────────────────────────────────────────────
 $(TEST_SHARED): $(TESTOBJ) $(SO_REAL)
 	@echo "  LINK    $@ (shared)"
-	$(CC) $(CFLAGS) -o $@ $(TESTOBJ) -L$(OBJDIR) -l$(LIBNAME) $(LDLIBS) -Wl,-rpath,'$$ORIGIN'
+	$(CC) $(CFLAGS) $(DEFINES) -o $@ $(TESTOBJ) -L$(OBJDIR) -l$(LIBNAME) $(LDLIBS) -Wl,-rpath,'$$ORIGIN'
 
 $(TEST_STATIC): $(TESTOBJ) $(STATICLIB)
 	@echo "  LINK    $@ (static)"
-	$(CC) $(CFLAGS) -o $@ $(TESTOBJ) $(STATICLIB) $(LDLIBS)
+	$(CC) $(CFLAGS) $(DEFINES) -o $@ $(TESTOBJ) $(STATICLIB) $(LDLIBS)
 
 # ── Compile rules ─────────────────────────────────────────────────────────────
 $(OBJDIR)/%.o: $(SRCDIR)/%.c | $(OBJDIR)
 	@echo "  CC      $<"
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(CC) $(INC) $(CFLAGS) $(DEFINES) -c $< -o $@
 
 $(OBJDIR)/%.pic.o: $(SRCDIR)/%.c | $(OBJDIR)
 	@echo "  CC(PIC) $<"
-	$(CC) $(CFLAGS) -fPIC -c $< -o $@
+	$(CC) $(INC) $(CFLAGS) $(DEFINES) -fPIC -c $< -o $@
 
 $(OBJDIR):
 	@mkdir -p $@
 
 # ── Convenience ───────────────────────────────────────────────────────────────
-.PHONY: run run-shared run-static clean veryclean
+.PHONY: run run-shared run-static clean veryclean api_header
 run: run-shared
 run-shared: $(TEST_SHARED)
 	@echo "  RUN     $<"
@@ -114,5 +133,8 @@ clean:
 veryclean: clean
 	@echo "  CLEAN   libs & bins"
 	rm -f $(STATICLIB) $(SO_REAL) $(SO_LINK) $(SO_SHORT) $(TEST_SHARED) $(TEST_STATIC)
+
+api_header:
+	bash -c "$(current_dir)/tools/make_api_header.sh $(DEFINES)"
 
 -include $(DEPS)

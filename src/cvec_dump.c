@@ -1,13 +1,9 @@
-#ifndef USE_DUMP
-#define USE_DUMP
+#include "cvec_impl.h"
+
+#ifndef USE_MACRO
+#define cvec_push_back_strliteral(vec, strliteral) \
+    cvec_push_back_n(vec, strliteral, sizeof(strliteral)-1)
 #endif
-#ifndef USE_STRING_EXT
-#define USE_STRING_EXT
-#endif
-#ifndef USE_MACRO_HELPERS
-#define USE_MACRO_HELPERS
-#endif
-#include "cvec/cvec_impl.h"
 
 char *cvec_dump_with_name(cvec_t *vec, const char *name) {
     char *dump = NULL;
@@ -39,3 +35,7 @@ End:
     cvec_free(&d);
     return dump;
 }
+
+#if defined(cvec_push_back_strliteral) && !defined(USE_MACRO)
+# undef cvec_push_back_strliteral
+#endif

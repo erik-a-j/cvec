@@ -1,7 +1,7 @@
-#ifndef CVEC_DUMP_H
-#define CVEC_DUMP_H
-#include "cvec_base.h"
+#ifndef CVEC_MACRO_H
+#define CVEC_MACRO_H
 
+#ifdef USE_DUMP
 #define CVEC_AS_PTR(vec)      \
     _Generic((vec),           \
         cvec_t: &(vec),       \
@@ -10,7 +10,9 @@
     )
 #define cvec_dump(vec) \
     cvec_dump_with_name(CVEC_AS_PTR(vec), #vec)
-    
-char *cvec_dump_with_name(cvec_t *vec, const char *name);
+#endif /*USE_DUMP*/
 
-#endif /*CVEC_DUMP_H*/
+#define cvec_push_back_strliteral(vec, strliteral) \
+    cvec_push_back_n(vec, strliteral, sizeof(strliteral)-1)
+
+#endif /*CVEC_MACRO_H*/

@@ -3,7 +3,7 @@ alias make='bear_make'
 
 bear_make() {
     local ec=0
-    if [[ -z $1 ]]; then
+    if [[ ! "$1" =~ ^run.*$ ]]; then
         echo "bear --append -- make:"
         bear --append -- /usr/bin/make "$@"
         ec=$?

@@ -1,5 +1,7 @@
 **/.vscode
 **/out
+**/build
 **/compile_commands.json
 **/test*
 !test.c
+Makefile.bak

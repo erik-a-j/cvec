@@ -1,4 +1,4 @@
-#include "cvec/cvec_impl.h"
+#include "cvec_impl.h"
 #include <stdint.h>
 
 #define CVEC_NMEMB_MAX(memb_size) ((memb_size) ? (SIZE_MAX / (memb_size)) : 0)
@@ -16,6 +16,7 @@ size_t cvec_default_grow(size_t old_nmemb, size_t new_nmemb, size_t memb_size) {
         return 0;
     return n;
 }
+cvec_hooks_t *cvec_hooks_get(cvec_t *vec) { return &vec->_->hooks; }
 
 static void *cvec_raw_realloc(cvec_t *vec, size_t size) {
     if (!vec->_->hooks.realloc) { vec->_->error |= ECVEC_MISSING_REALLOC_FN; return NULL; }
@@ -33,8 +34,18 @@ static void *cvec_raw_memcpy(cvec_t *vec, void *restrict dst, const void *restri
     if (!vec->_->hooks.memcpy) { vec->_->error |= ECVEC_MISSING_MEMCPY_FN; return NULL; }
     return vec->_->hooks.memcpy(dst, src, n);
 }
+static int cvec_assure_hooks(const cvec_hooks_t *h) {
+    if (!h->alloc)   return 1;
+    if (!h->realloc) return 1;
+    if (!h->free)    return 1;
+    if (!h->memcpy)  return 1;
+    if (!h->grow)    return 1;
+    return 0;
+}
 
 int cvec_init(cvec_t *vec, size_t memb_size, cvec_hooks_t hooks) {
+    if (cvec_assure_hooks(&hooks) != 0)
+        return -1;
     vec->memb_size = memb_size;
     vec->data = NULL;
     vec->nmemb_cap = vec->nmemb = 0;

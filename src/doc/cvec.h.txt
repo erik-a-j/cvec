@@ -1,0 +1,5 @@
+/**
+ * @attention Definitions affecting this include
+ * CVEC_CUSTOM_ALLOCATORS - @see "cvec_hooks.h"
+ * CVEC_CUSTOM_MEMCPY - @see "cvec_hooks.h"
+ */

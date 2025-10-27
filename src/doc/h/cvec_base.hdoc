@@ -1,0 +1,167 @@
+//cvec_init
+/**
+ * @brief Initialize a `cvec_t` structure with safe default values.
+ *
+ * This function prepares an uninitialized `cvec_t` structure for use.
+ * It performs no heap allocations; it only sets up bookkeeping fields
+ * and assigns hooks.
+ *
+ * The resulting vector has zero capacity, zero elements, and a member
+ * size specified by @p memb_size. The vector is ready for use with
+ * functions such as `cvec_reserve()` or `cvec_push()`.
+ *
+ * @param vec
+ *   Pointer to an uninitialized `cvec_t` structure. Must not be `NULL`.
+ * @param memb_size
+ *   Size (in bytes) of a single vector element.
+ * @param hooks
+ *   Optional pointer to a `cvec_hooks_t` structure defining custom
+ *   allocation and element-management callbacks.
+ *   During initialization, each non-`NULL` member of `hooks` is copied
+ *   into `vec->hooks`. Any remaining `NULL` members are replaced with
+ *   default callbacks supplied by `cvec_hooks_init()`.
+ *
+ * @note
+ *   This call does not allocate any memory for the element buffer.
+ *   The vector’s storage is allocated lazily on the first call to
+ *   `cvec_reserve()`, `cvec_push()`, or any operation that grows it.
+ *
+ * @see `cvec_hooks_t`
+ * @see `cvec_hooks_init()`
+ * @see `cvec_reserve()`
+ * @see `cvec_push()`
+ */
+
+//cvec_free
+/**
+ * @brief deallocate memory for `vec->data` and `vec->_`
+ * @param vec
+ */
+
+//cvec_resize
+/**
+ * @brief reallocate memory for `vec->data`
+ * @param vec
+ * @param nmemb
+ * @see
+ * __ERRORS__:
+ * @see 
+ * `nmemb > SIZE_MAX / vec->memb_size`: `ECVEC_OVERFLOW`
+ * @see
+ * `hooks->alloc == NULL`: `ECVEC_MISSING_ALLOC_FN`
+ * @see
+ * `hooks->realloc == NULL`: `ECVEC_MISSING_REALLOC_FN`
+ * @return `0` on success, `-1` on fail
+ */
+
+//cvec_reserve
+/**
+ * @brief Ensures that `vec->data` has capacity for at least `nmemb` elements.
+ *
+ * This function increases the allocated capacity of the vector if `nmemb`
+ * exceeds the current `nmemb_cap`. It never reduces capacity.
+ *
+ * @param vec 
+ * @param nmemb 
+ *
+ * @return The return value of `cvec_resize(vec, new_nmemb)`.
+ *         Returns `0` on success, or a negative error code on failure.
+ *
+ * @details
+ * - If `nmemb` is `0` or less than or equal to the current capacity,
+ *   no reallocation occurs and the function returns `0`.
+ * - The new capacity is computed using the vector’s `grow` hook via
+ *   `cvec_raw_grow()`. If this hook returns `0`, the function fails.
+ *
+ * @errors
+ * - `ECVEC_MISSING_GROW_FN` — if `hooks->grow` is `NULL`.
+ * - Additional errors may be propagated from `cvec_resize()`.
+ *
+ * @see `cvec_resize()`
+ * @see `cvec_raw_grow()`
+ */
+
+//cvec_push
+/**
+ * @brief push one element of size `vec->memb_size`
+ * @param vec
+ * @param elem void pointer to element
+ * @see
+ * __ERRORS__:
+ * @see
+ * `hooks->memcpy == NULL`: `ECVEC_MISSING_MEMCPY_FN`
+ * @see
+ * see __ERRORS__ -> _`cvec_resize(cvec_t *, size_t)`_
+ * @see
+ * see __ERRORS__ -> _`cvec_reserve(cvec_t *, size_t)`_
+ * @return `0` on success, `-1` on fail
+ */
+
+//cvec_push_n
+/**
+ * @brief push `count * vec->memb_size` bytes from src
+ * @param vec
+ * @param src void pointer to src
+ * @param count count of elements in src
+ * @see
+ * __ERRORS__:
+ * @see
+ * `vec->nmemb + count < vec->nmemb`: `ECVEC_OVERFLOW`
+ * @see
+ * see __ERRORS__ -> _`cvec_reserve(cvec_t *, size_t)`_
+ * @return `0` on success, `-1` on fail
+ */
+
+//cvec_capacity
+/**
+ * @brief get capacity in bytes
+ * @param vec
+ * @return `vec->nmemb_cap * vec->memb_size`
+ */
+
+//cvec_size
+/**
+ * @brief get size in bytes
+ * @param vec
+ * @return `vec->nmemb * vec->memb_size`
+ */
+
+//cvec_shrink_to_fit
+/**
+ * @brief reallocate `vec->data` with new capacity of `vec->nmemb`
+ * @param vec
+ * @see
+ * __ERRORS__:
+ * @see
+ * see __ERRORS__ -> _`cvec_resize(cvec_t *, size_t)`_
+ * @return return value of _`cvec_resize(cvec_t *, size_t)`_
+ */
+
+//cvec_shrink
+/**
+ * @brief reallocate `vec->data` with new capacity of `nmemb`
+ * @attention
+ * `if (nmemb >= vec->nmemb_cap)` => __no-op__
+ * @param vec
+ * @param nmemb
+ * @see
+ * __ERRORS__:
+ * @see
+ * see __ERRORS__ -> _`cvec_resize(cvec_t *, size_t)`_
+ * @return return value of _`cvec_resize(cvec_t *, size_t)`_
+ */
+
+//cvec_steal
+/**
+ * @brief 
+ * @param vec 
+ * @return 
+ */
+
+//cvec_at
+/**
+ * @brief 
+ * @param vec 
+ * @param index 
+ * @return 
+ */

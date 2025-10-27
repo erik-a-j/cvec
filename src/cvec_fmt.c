@@ -1,11 +1,13 @@
-#include "cvec_impl.h"
-#include <stdio.h>
 #include <stdarg.h>
+#include <stdio.h>
+#include "cvec_impl.h"
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wformat-nonliteral"
-int cvec_push_back_fmt(cvec_t *vec, const char *fmt, ...) {
-    if (vec->memb_size != 1) return -1;
+int cvec_push_fmt(cvec_t *vec, const char *fmt, ...) {
+    if (vec->memb_size != 1) {
+        return -1;
+    }
     va_list ap;
     va_start(ap, fmt);
 
@@ -18,14 +20,16 @@ int cvec_push_back_fmt(cvec_t *vec, const char *fmt, ...) {
         return -1;
     }
 
-    if (cvec_reserve(vec, vec->nmemb + (size_t)needed+1) != 0) {
+    if (cvec_reserve(vec, vec->nmemb + (size_t)needed + 1) != 0) {
         va_end(ap);
         return -1;
     }
 
-    int written = vsnprintf((char*)vec->data + vec->nmemb * vec->memb_size, (size_t)needed+1, fmt, ap);
+    int written = vsnprintf((char *)vec->data + vec->nmemb * vec->memb_size, (size_t)needed + 1, fmt, ap);
     va_end(ap);
-    if (written < 0) return -1;
+    if (written < 0) {
+        return -1;
+    }
 
     vec->nmemb += (size_t)written;
     return 0;

@@ -5,3 +5,6 @@
 **/test*
 !test.c
 Makefile.bak
+tools/*.pl
+!tools/make_headers.pl
+tools/pl

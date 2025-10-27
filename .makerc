@@ -3,12 +3,13 @@ alias make='bear_make'
 
 bear_make() {
     local ec=0
-    if [[ ! "$1" =~ ^run.*$ ]]; then
+    if [[ "$1" =~ ^(run.*|clean)$ ]]; then
+        /usr/bin/make "$@"
+        ec=$?
+        [[ "$1" == "clean" ]] && rm compile_commands.json
+    else
         echo "bear --append -- make:"
         bear --append -- /usr/bin/make "$@"
-        ec=$?
-    else
-        /usr/bin/make "$@"
         ec=$?
     fi
     return $ec

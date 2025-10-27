@@ -1,0 +1,7 @@
+//cvec_dump_with_name
+/**
+ * @brief get dump of pretty formatted debug info of `vec`
+ * @param vec 
+ * @param name _optional_ name of `vec`
+ * @return pointer to memory allocated with `hooks->alloc`. __Must free manually!__
+ */

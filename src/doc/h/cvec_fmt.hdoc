@@ -1,0 +1,8 @@
+//cvec_push_fmt
+/**
+ * @brief push formatted string
+ * @param vec 
+ * @param fmt pointer to a null-terminated byte string specifying how to interpret the data
+ * @param ... `va_args`
+ * @return `0` on success, `-1` on fail
+ */

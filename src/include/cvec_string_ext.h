@@ -1,3 +1,4 @@
+//@file
 #ifndef CVEC_STRING_EXT_H
 #define CVEC_STRING_EXT_H
 #include <string.h>

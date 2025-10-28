@@ -1,3 +1,4 @@
+//@file
 #ifndef CVEC_HOOKS_H
 #define CVEC_HOOKS_H
 #include "cvec_api.h"
@@ -22,13 +23,13 @@ CVEC_API size_t cvec_default_grow(size_t old_nmemb, size_t new_nmemb, size_t mem
 static inline void cvec_hooks_init(cvec_hooks_t *hooks, int flag) {
     cvec_hooks_t default_hooks = {
 #ifdef CVEC_CUSTOM_ALLOCATORS
-        .alloc   = NULL,
+        .alloc = NULL,
         .realloc = NULL,
-        .free    = NULL,
+        .free = NULL,
 #else
-        .alloc   = malloc,
+        .alloc = malloc,
         .realloc = realloc,
-        .free    = free,
+        .free = free,
 #endif
 #ifdef CVEC_CUSTOM_MEMCPY
         .memcpy = NULL,

@@ -1,4 +1,0 @@
-# key : val
-vec: Pointer to a valid `cvec_t` structure. Must not be `NULL`.
-nmemb: Desired number of elements (capacity target).
-memb_size: Size of one element

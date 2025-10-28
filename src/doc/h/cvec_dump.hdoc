@@ -1,7 +1,19 @@
+// clang-format off
+//@file
+/**
+ * @file
+ * 
+ * This file declares extension functions.
+ * Enabled by compiling the cvec library with -DUSE_DUMP
+ */
 //cvec_dump_with_name
 /**
- * @brief get dump of pretty formatted debug info of `vec`
+ * @brief Get dump of pretty formatted debug info of `vec`.
+ * 
  * @param vec 
- * @param name _optional_ name of `vec`
- * @return pointer to memory allocated with `hooks->alloc`. __Must free manually!__
+ *   Pointer to a `cvec_t` structure. Must not be `NULL`.
+ * @param name 
+ *   Optional string.
+ * 
+ * @return Pointer to memory allocated with `hooks->alloc`. Must free manually!
  */

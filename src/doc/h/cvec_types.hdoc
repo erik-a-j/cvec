@@ -1,4 +1,10 @@
 // clang-format off
+//@file
+/**
+ * @file
+ * 
+ * This file declares types used by the cvec library.
+ */
 //alloc_fn_t
 /**
  * @typedef alloc_fn_t

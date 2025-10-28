@@ -1,3 +1,4 @@
+//@file
 #ifndef CVEC_FMT_H
 #define CVEC_FMT_H
 #include "cvec_api.h"

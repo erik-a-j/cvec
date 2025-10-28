@@ -1,3 +1,11 @@
+// clang-format off
+//@file
+/** 
+ * @file
+ * 
+ * This file declares the base functions of the cvec library.
+ */
+
 //cvec_init
 /**
  * @brief Initialize a `cvec_t` structure with safe default values.
@@ -34,24 +42,26 @@
 
 //cvec_free
 /**
- * @brief deallocate memory for `vec->data` and `vec->_`
+ * @brief Deallocate memory for `vec->data`.
+ * 
+ * This function calls `vec->hooks.free()` to deallocate `vec->data`.
+ * 
  * @param vec
+ *   Pointer to a `cvec_t` structure.
  */
 
 //cvec_resize
 /**
- * @brief reallocate memory for `vec->data`
+ * @brief Resize memory for `vec->data`.
+ * 
+ * This function resizes memory for `vec->data`.
+ * 
  * @param vec
+ *   Pointer to a `cvec_t` structure. Must not be `NULL`.
  * @param nmemb
- * @see
- * __ERRORS__:
- * @see 
- * `nmemb > SIZE_MAX / vec->memb_size`: `ECVEC_OVERFLOW`
- * @see
- * `hooks->alloc == NULL`: `ECVEC_MISSING_ALLOC_FN`
- * @see
- * `hooks->realloc == NULL`: `ECVEC_MISSING_REALLOC_FN`
- * @return `0` on success, `-1` on fail
+ *   Desired number of elements (capacity target).
+ * 
+ * @return Returns `0` on success, or a negative error code on failure.
  */
 
 //cvec_reserve
@@ -62,7 +72,9 @@
  * exceeds the current `nmemb_cap`. It never reduces capacity.
  *
  * @param vec 
+ *   Pointer to a `cvec_t` structure. Must not be `NULL`.
  * @param nmemb 
+ *   Desired number of elements (capacity target).
  *
  * @return The return value of `cvec_resize(vec, new_nmemb)`.
  *         Returns `0` on success, or a negative error code on failure.
@@ -83,85 +95,98 @@
 
 //cvec_push
 /**
- * @brief push one element of size `vec->memb_size`
- * @param vec
- * @param elem void pointer to element
- * @see
- * __ERRORS__:
- * @see
- * `hooks->memcpy == NULL`: `ECVEC_MISSING_MEMCPY_FN`
- * @see
- * see __ERRORS__ -> _`cvec_resize(cvec_t *, size_t)`_
- * @see
- * see __ERRORS__ -> _`cvec_reserve(cvec_t *, size_t)`_
- * @return `0` on success, `-1` on fail
+ * @brief Push one element of size `vec->memb_size`.
+ * 
+ * @param vec 
+ *   Pointer to a `cvec_t` structure. Must not be `NULL`.
+ * @param elem 
+ *   Pointer to `elem`
+ * 
+ * @return Returns `0` on success, or a negative error code on failure.
  */
 
 //cvec_push_n
 /**
- * @brief push `count * vec->memb_size` bytes from src
+ * @brief Push `count * vec->memb_size` bytes from src.
+ * 
  * @param vec
- * @param src void pointer to src
- * @param count count of elements in src
- * @see
- * __ERRORS__:
- * @see
- * `vec->nmemb + count < vec->nmemb`: `ECVEC_OVERFLOW`
- * @see
- * see __ERRORS__ -> _`cvec_reserve(cvec_t *, size_t)`_
- * @return `0` on success, `-1` on fail
+ *   Pointer to a `cvec_t` structure. Must not be `NULL`.
+ * @param src
+ *   Pointer to `src`
+ * @param count
+ *   Count of elements in `src`
+ * 
+ * @return Returns `0` on success, or a negative error code on failure.
  */
 
 //cvec_capacity
 /**
- * @brief get capacity in bytes
+ * @brief Get capacity in bytes.
+ * 
  * @param vec
+ *   Pointer to a `cvec_t` structure. Must not be `NULL`.
+ * 
  * @return `vec->nmemb_cap * vec->memb_size`
  */
 
 //cvec_size
 /**
- * @brief get size in bytes
+ * @brief Get size in bytes.
+ * 
  * @param vec
+ *   Pointer to a `cvec_t` structure. Must not be `NULL`.
+ * 
  * @return `vec->nmemb * vec->memb_size`
  */
 
 //cvec_shrink_to_fit
 /**
- * @brief reallocate `vec->data` with new capacity of `vec->nmemb`
+ * @brief Shrink `vec->data` with new capacity of `vec->nmemb`.
+ * 
  * @param vec
- * @see
- * __ERRORS__:
- * @see
- * see __ERRORS__ -> _`cvec_resize(cvec_t *, size_t)`_
- * @return return value of _`cvec_resize(cvec_t *, size_t)`_
+ *   Pointer to a `cvec_t` structure. Must not be `NULL`.
+ * 
+ * @return The return value of `cvec_resize(vec, new_nmemb)`.
+ *         Returns `0` on success, or a negative error code on failure.
  */
 
 //cvec_shrink
 /**
- * @brief reallocate `vec->data` with new capacity of `nmemb`
- * @attention
- * `if (nmemb >= vec->nmemb_cap)` => __no-op__
+ * @brief Shrink `vec->data` with new capacity of `nmemb`.
+ * 
  * @param vec
+ *   Pointer to a `cvec_t` structure. Must not be `NULL`.
  * @param nmemb
- * @see
- * __ERRORS__:
- * @see
- * see __ERRORS__ -> _`cvec_resize(cvec_t *, size_t)`_
- * @return return value of _`cvec_resize(cvec_t *, size_t)`_
+ *   Desired number of elements (capacity target).
+ * 
+ * @return The return value of `cvec_resize(vec, new_nmemb)`.
+ *         Returns `0` on success, or a negative error code on failure.
  */
 
 //cvec_steal
 /**
- * @brief 
+ * @brief Take ownership of `vec->data`.
+ * 
+ * This function sets `vec->data = NULL` and `vec->nmemb_cap = vec->nmemb = 0`.
+ * 
  * @param vec 
- * @return 
+ *   Pointer to a `cvec_t` structure. Must not be `NULL`.
+ * 
+ * @return Returns a pointer copied from `vec->data`.
  */
 
 //cvec_at
 /**
- * @brief 
+ * @brief Gets pointer to somewhere valid in `vec->data`.
+ * 
+ * This function calculates pointer offset as:
+ * `(char *)vec->data + index * vec->memb_size`.
+ * 
  * @param vec 
+ *   Pointer to a `cvec_t` structure. Must not be `NULL`.
  * @param index 
- * @return 
+ *   Index of element.
+ * 
+ * @return Returns a valid pointer to allocated memory in `vec->data` on success,
+ *         or `NULL` if `index` < `vec->nmemb_cap`.
  */

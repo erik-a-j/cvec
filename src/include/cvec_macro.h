@@ -1,3 +1,4 @@
+//@file
 #ifndef CVEC_MACRO_H
 #define CVEC_MACRO_H
 

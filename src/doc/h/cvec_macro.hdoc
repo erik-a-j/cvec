@@ -1,0 +1,8 @@
+// clang-format off
+//@file
+/**
+ * @file
+ * 
+ * This file defines helper macros.
+ * Enabled by compiling the cvec library with -DUSE_MACRO
+ */

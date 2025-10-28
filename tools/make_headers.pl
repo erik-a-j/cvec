@@ -1,90 +1,62 @@
 #!/usr/bin/env perl
 use strict;
 use warnings;
-use File::Basename;
-use Cwd qw(abs_path);
+use Getopt::Long qw(:config bundling);
+use Pod::Usage;
+use FindBin qw($Bin);
+use File::Spec;
 use File::Path qw(make_path);
-
-# Make all standard handles UTF-8 (so your notes can contain Unicode cleanly)
 use open ':std', ':encoding(UTF-8)';
+
+my $dir    = $Bin;
+my $srcdir  = File::Spec->catdir($dir, '..', 'src');
+my $incdir  = File::Spec->catdir($srcdir, 'include');
+my $docdir  = File::Spec->catdir($srcdir, 'doc');
+my $outdir = '';
+my $header_suffix = '';
+my $verbose = 0;
+my $help = 0;
+
+GetOptions(
+  'outdir=s'        => \$outdir,
+  'header-suffix=s' => \$header_suffix,
+  'verbose|v'       => \$verbose,
+  'help|h'          => \$help,
+) or pod2usage(2);
+pod2usage(1) if $help;
+
+$outdir =~ s/^\s+|\s+$//g;
+$outdir =~ s{/$}{};
+
+$outdir or pod2usage("Usage: \@headers | $0 --outdir <dir> [-v]");
 
 my @headers = <STDIN>;     # grab all lines
 chomp @headers;            # remove trailing newlines
 @headers = grep { length } @headers;
 
-my $dir    = dirname(abs_path($0));
-my $srcdir = "$dir/../src";
-my $incdir = "$srcdir/include";
-my $docdir = "$srcdir/doc";
-my $outdir = "$dir/../out/cvec/include";
-make_path($outdir) unless -d $outdir;
+my $api_header_file = "$outdir/cvec.h";
+my $header_leaf_dir = "cvec";
+my $outheader_dir = "$outdir/$header_leaf_dir";
+make_path($outheader_dir) unless -d $outheader_dir;
 
-# --- NEW: where the param notes live ---
-my $key_val_file = "$docdir/key_val.txt";
-
-# --- NEW: loader for "key: value" or "key=value" pairs (UTF-8) ---
-sub load_param_notes {
-  my ($path) = @_;
-  my %h;
-  open(my $fh, '<:encoding(UTF-8)', $path) or die "Cannot open $path: $!";
-  while (my $line = <$fh>) {
-    chomp $line;
-    $line =~ s/^\s+|\s+$//g;               # trim
-    next if $line eq '' || $line =~ /^[#;]/;
-
-    # key[:=]value — key is non-space up to first ':' or '='
-    my ($k, $v) = $line =~ /\A([^:=\s]+)\s*[:=]\s*(.+)\z/ or next;
-
-    # Allow escaped sequences
-    $v =~ s/\\n/\n/g;
-    $v =~ s/\\t/\t/g;
-
-    $h{$k} = $v;                           # later duplicates overwrite earlier ones
-  }
-  close $fh;
-  return %h;
-}
-my %PARAM_NOTES = -e $key_val_file ? load_param_notes($key_val_file) : ();
-# ---------------------------
-# 1) Define filters for doc_str processing
-# ---------------------------
-my @DOC_FILTERS = (
-  sub {  # Append note inline after "@param <name> ..." for any configured name
-    my ($s) = @_;
-    return $s unless %PARAM_NOTES;
-
-    # Build alternation of param names (longer first; escape metachars)
-    my @names = sort { length($b) <=> length($a) } keys %PARAM_NOTES;
-    return $s unless @names;
-    my $alternation = join '|', map { quotemeta($_) } @names;
-
-    $s =~ s{
-      ^([ \t]*\*[ \t]*\@param[ \t]+)   # $1: prefix like " * @param "
-      ($alternation)[ \t]*$            # $2: the param name
-    }{
-      my ($prefix, $name) = ($1, $2);
-      my $note = $PARAM_NOTES{$name} // '';
-      $note ne '' ? ($prefix . $name . ' ' . $note) : ($prefix . $name)
-    }egmx;
-
-    return $s;
-  },
+my %api_header = (
+  hguard_beg => "#ifndef CVEC_H\n#define CVEC_H\n\n",
+  hguard_end => "\n#endif\n",
 );
-sub process_doc_str {
-  my ($s) = @_;
-  for my $f (@DOC_FILTERS) { $s = $f->($s) }
-  return $s;
-}
 
 HEADER:
 for my $h (@headers) {
+  (my $h_out_name = $h) =~ s/\.h$/$header_suffix\.h/;
+  if ($h !~ /cvec_api/) {
+    $api_header{$h} = "#include \"$header_leaf_dir/$h_out_name\"\n";
+  }
   my $h_file   = "$incdir/$h";
   my $doc_file = "$docdir/h/${h}doc";
-  my $out_file = "$outdir/$h";
+  my $out_file = "$outheader_dir/$h_out_name";
 
   # Load the doc file (skip header if doc is missing)
   open(my $df, '<:encoding(UTF-8)', $doc_file) or do {
-    warn "skip: no doc for $h ($doc_file): $!";
+    warn "skip: no doc for $h ($doc_file): $!" if $h !~ /cvec_api/;
     if (open(my $in,  '<:encoding(UTF-8)', $h_file)
         && open(my $out, '>:encoding(UTF-8)', $out_file)) {
       print {$out} do { local $/; <$in> };
@@ -102,15 +74,6 @@ for my $h (@headers) {
   while ($doc =~ /(.*?)\n(.*?\*\/)\n*/sg) {
     my ($doc_id, $doc_str) = ($1, $2);
     $doc_str .= "\n" unless $doc_str =~ /\n\z/;
-
-    #my ($id) = $doc_id =~ m{//\s*(\S+)};
-    #$doc_str =~ s{
-    #  ^([ \t]*\*[ \t]*\@brief)[ \t]*([^\n]*)
-    #}{
-    #  "$1 __${id}__: $2"
-    #}emx if defined $id;
-
-    $doc_str = process_doc_str($doc_str);
     $replace_for{$doc_id} = $doc_str;
   }
 
@@ -142,3 +105,29 @@ for my $h (@headers) {
   close $in;
   close $out;
 }
+
+open(my $out, '>:encoding(UTF-8)', $api_header_file) or die "Cannot write $api_header_file: $!";
+print {$out} $api_header{hguard_beg};
+
+open(my $in, '<:encoding(UTF-8)', "$docdir/cvec.hdoc") or die "Cannot write $docdir/cvec.hdoc: $!";
+print {$out} do { local $/; <$in> }; print {$out} "\n\n";
+close $in;
+
+my @ordered = grep { exists $api_header{$_} } @headers;
+print {$out} @api_header{@ordered};
+
+print {$out} $api_header{hguard_end};
+close $out;
+
+
+__END__
+
+=head1 SYNOPSIS
+
+@headers | make_headers.pl --outdir=<dir> [--verbose|-v] [--help|-h]
+
+=head1 OPTIONS
+
+  --outdir=DIR   Specify output directory (required)
+  --verbose, -v  Print extra info
+  --help, -h     Show this message

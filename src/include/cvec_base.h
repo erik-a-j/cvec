@@ -1,3 +1,4 @@
+//@file
 #ifndef CVEC_BASE_H
 #define CVEC_BASE_H
 #include "cvec_api.h"
@@ -44,9 +45,8 @@ static inline int cvec_shrink(cvec_t *vec, size_t nmemb) {
 
 //cvec_steal
 static inline void *cvec_steal(cvec_t *vec) {
-    if (!vec->data) { return NULL; }
-    void *stolen   = vec->data;
-    vec->data      = NULL;
+    void *stolen = vec->data;
+    vec->data = NULL;
     vec->nmemb_cap = vec->nmemb = 0;
     return stolen;
 }

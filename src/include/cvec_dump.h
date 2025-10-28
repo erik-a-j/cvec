@@ -1,3 +1,4 @@
+//@file
 #ifndef CVEC_DUMP_H
 #define CVEC_DUMP_H
 #include "cvec_api.h"

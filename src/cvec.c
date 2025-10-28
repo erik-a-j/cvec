@@ -53,40 +53,22 @@ static size_t cvec_raw_grow(cvec_t *vec, size_t old_nmemb, size_t new_nmemb, siz
     return vec->hooks.grow(old_nmemb, new_nmemb, memb_size);
 }
 
-/*static void cvec_ensure_hooks(cvec_hooks_t *h) {
-    cvec_hooks_t dh = cvec_hooks_init();
-    if (!h->alloc) {
-        h->alloc = dh.alloc;
-    }
-    if (!h->realloc) {
-        h->realloc = dh.realloc;
-    }
-    if (!h->free) {
-        h->free = dh.free;
-    }
-    if (!h->memcpy) {
-        h->memcpy = dh.memcpy;
-    }
-    if (!h->grow) {
-        h->grow = dh.grow;
-    }
-}*/
-
 void cvec_init(cvec_t *vec, size_t memb_size, const cvec_hooks_t *hooks) {
     vec->hooks = hooks ? *hooks : (cvec_hooks_t){0};
     cvec_hooks_init(&vec->hooks, CVEC_HOOKS_INIT_PARTIAL);
 
     vec->memb_size = memb_size;
-    vec->data      = NULL;
+    vec->data = NULL;
     vec->nmemb_cap = vec->nmemb = 0;
-    vec->error                  = ECVEC_NONE;
+    vec->error = ECVEC_NONE;
 }
 
 void cvec_free(cvec_t *vec) {
+    if (!vec) { return; }
     cvec_raw_free(vec, vec->data);
     if (!(vec->error & ECVEC_MISSING_FREE_FN)) {
-        vec->error     = ECVEC_NONE;
-        vec->data      = NULL;
+        vec->error = ECVEC_NONE;
+        vec->data = NULL;
         vec->nmemb_cap = vec->nmemb = 0;
     }
 }
@@ -95,7 +77,7 @@ int cvec_resize(cvec_t *vec, size_t nmemb) {
     if (nmemb == vec->nmemb_cap) { return 0; }
     if (nmemb == 0) {
         if (vec->data) { cvec_raw_free(vec, vec->data); }
-        vec->data      = NULL;
+        vec->data = NULL;
         vec->nmemb_cap = vec->nmemb = 0;
         return 0;
     }
@@ -106,7 +88,7 @@ int cvec_resize(cvec_t *vec, size_t nmemb) {
     void *newdata =
         vec->nmemb_cap ? cvec_raw_realloc(vec, nmemb * vec->memb_size) : cvec_raw_alloc(vec, nmemb * vec->memb_size);
     if (!newdata) { return -1; }
-    vec->data      = newdata;
+    vec->data = newdata;
     vec->nmemb_cap = nmemb;
     if (vec->nmemb > vec->nmemb_cap) { vec->nmemb = vec->nmemb_cap; }
     return 0;

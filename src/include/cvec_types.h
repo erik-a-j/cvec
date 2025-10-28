@@ -1,15 +1,16 @@
+//@file
 #ifndef CVEC_TYPES_H
 #define CVEC_TYPES_H
 #include <stddef.h>
 
 enum cvec_error_t {
-    ECVEC_NONE               = 0u,
-    ECVEC_MISSING_ALLOC_FN   = (1u << 0),
+    ECVEC_NONE = 0u,
+    ECVEC_MISSING_ALLOC_FN = (1u << 0),
     ECVEC_MISSING_REALLOC_FN = (1u << 1),
-    ECVEC_MISSING_FREE_FN    = (1u << 2),
-    ECVEC_MISSING_GROW_FN    = (1u << 3),
-    ECVEC_MISSING_MEMCPY_FN  = (1u << 4),
-    ECVEC_OVERFLOW           = (1u << 5)
+    ECVEC_MISSING_FREE_FN = (1u << 2),
+    ECVEC_MISSING_GROW_FN = (1u << 3),
+    ECVEC_MISSING_MEMCPY_FN = (1u << 4),
+    ECVEC_OVERFLOW = (1u << 5)
 };
 typedef size_t cvec_error_t;
 

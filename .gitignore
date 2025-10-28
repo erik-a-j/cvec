@@ -6,5 +6,6 @@
 !test.c
 Makefile.bak
 tools/*.pl
+tools/*.py
 !tools/make_headers.pl
-tools/pl
+tools/d

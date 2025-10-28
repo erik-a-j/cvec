@@ -1,3 +1,11 @@
+// clang-format off
+//@file
+/**
+ * @file
+ * 
+ * This file declares extension functions.
+ * Enabled by compiling the cvec library with -DUSE_FMT
+ */
 //cvec_push_fmt
 /**
  * @brief push formatted string

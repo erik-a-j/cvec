@@ -1,0 +1,8 @@
+// clang-format off
+//@file
+/**
+ * @file
+ * 
+ * This file declares extension functions.
+ * Enabled by compiling the cvec library with -DUSE_STR_EXT
+ */

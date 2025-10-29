@@ -28,21 +28,66 @@ pod2usage(1) if $help;
 $outdir =~ s/^\s+|\s+$//g;
 $outdir =~ s{/$}{};
 
-$outdir or pod2usage("Usage: \@headers | $0 --outdir <dir> [-v]");
+$outdir or pod2usage("Usage: $0 --outdir <dir> [-v]");
 
-my @headers = <STDIN>;     # grab all lines
-chomp @headers;            # remove trailing newlines
-@headers = grep { length } @headers;
+#my @headers = <STDIN>;     # grab all lines
+#chomp @headers;            # remove trailing newlines
+#@headers = grep { length } @headers;
+my %defines = map { $_ => 1 } @ARGV;
 
 my $api_header_file = "$outdir/cvec.h";
 my $header_leaf_dir = "cvec";
 my $outheader_dir = "$outdir/$header_leaf_dir";
-make_path($outheader_dir) unless -d $outheader_dir;
+make_path("$outheader_dir/ext") unless -d "$outheader_dir/ext";
 
 my %api_header = (
   hguard_beg => "#ifndef CVEC_H\n#define CVEC_H\n\n",
   hguard_end => "\n#endif\n",
 );
+
+sub get_headers {
+    my ($full) = @_;
+    my @files;
+
+    opendir(my $dh, $full) or die "cant open $full: $!";
+    while (my $ent = readdir($dh)) {
+        next if $ent =~ /^\.\.?$/;
+        my $path = File::Spec->catfile($full, $ent);
+        if (-f $path) {
+            push @files, $path;
+        }
+    }
+    closedir($dh);
+    return @files;
+}
+
+my @headers = get_headers($incdir);
+my @all_headers_ext = get_headers("$incdir/ext");
+
+s{^.*/}{} for @headers;
+for (@all_headers_ext) {
+    s/.*\/(ext\/cvec_.*\.h)$/$1/;
+}
+@headers = sort @headers;
+@all_headers_ext = sort @all_headers_ext;
+
+HEADER_EXT:
+for my $h_ext (@all_headers_ext) {
+    my $h_file   = "$incdir/$h_ext";
+    open(my $in,  '<:encoding(UTF-8)', $h_file)   or do { warn "skip $h_ext: $!"; next HEADER_EXT };
+
+    while (my $line = <$in>) {
+        if ($line =~ m{//\s*(-DUSE_[A-Z0-9_]+)\b}) {
+            if (exists $defines{$1}) {
+                push @headers, $h_ext;
+            }
+        } else {
+            close $in;
+            next HEADER_EXT;
+        }
+    }
+    close $in;
+}
 
 HEADER:
 for my $h (@headers) {
@@ -84,7 +129,7 @@ for my $h (@headers) {
       print {$out} do { local $/; <$in> };
       close $in; close $out;
     }
-    next HEADER;  # <- was exit 0 before
+    next HEADER;
   }
 
   # Build alternation for exact doc_id hits (longest first)
@@ -98,7 +143,7 @@ for my $h (@headers) {
   while (my $line = <$in>) {
     if (my ($hit) = $line =~ /$id_re/) {
       print {$out} $replace_for{$hit};
-    } else {
+    } elsif ($line !~ m{//\s*-DUSE_[A-Z0-9_]+\b}) {
       print {$out} $line;
     }
   }
@@ -124,7 +169,7 @@ __END__
 
 =head1 SYNOPSIS
 
-@headers | make_headers.pl --outdir=<dir> [--verbose|-v] [--help|-h]
+make_headers.pl --outdir=<dir> [--verbose|-v] [--help|-h]
 
 =head1 OPTIONS
 

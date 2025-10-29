@@ -5,18 +5,18 @@
 #include "cvec_hooks.h"
 #include "cvec_types.h"
 #ifdef USE_MACRO
-#include "cvec_macro.h"
+#include "ext/cvec_macro.h"
 #endif
 #ifdef USE_DUMP
-#include "cvec_dump.h"
-#include "cvec_fmt.h"
-#include "cvec_string_ext.h"
+#include "ext/cvec_dump.h"
+#include "ext/cvec_fmt.h"
+#include "ext/cvec_string.h"
 #else
 #ifdef USE_STRING_EXT
-#include "cvec_string_ext.h"
+#include "ext/cvec_string.h"
 #endif
 #ifdef USE_FMT
-#include "cvec_fmt.h"
+#include "ext/cvec_fmt.h"
 #endif
 #endif
 

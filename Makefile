@@ -66,25 +66,25 @@ OUTDIR     := $(current_dir)/out
 BUILDDIR   := $(OUTDIR)/build
 TESTDIR    := $(OUTDIR)/test
 OBJDIR     := $(BUILDDIR)/obj
-RELEASEDIR := $(OUTDIR)/cvec
+RELEASEDIR := $(OUTDIR)/release
 
 LIBSRC  := cvec.c
 TESTSRC := test/test.c
 
-USE_MACRO      ?= 1
-USE_STRING_EXT ?= 1
-USE_DUMP       ?= 1
-USE_FMT        ?= 1
+USE_MACRO   ?= 1
+USE_STRING  ?= 1
+USE_DUMP    ?= 1
+USE_FMT     ?= 1
 
 ifeq ($(USE_MACRO),1)
   DEFINES += -DUSE_MACRO
 endif
 ifeq ($(USE_DUMP),1)
-  DEFINES += -DUSE_STRING_EXT -DUSE_FMT -DUSE_DUMP
+  DEFINES += -DUSE_STRING -DUSE_FMT -DUSE_DUMP
   LIBSRC += cvec_fmt.c cvec_dump.c
 else
-  ifeq ($(USE_STRING_EXT),1)
-    DEFINES += -DUSE_STRING_EXT
+  ifeq ($(USE_STRING),1)
+    DEFINES += -DUSE_STRING
   endif
   ifeq ($(USE_FMT),1)
     DEFINES += -DUSE_FMT
@@ -311,17 +311,16 @@ $(OBJDIR):
 $(RELEASEDIR):
 	@mkdir -p $@
 
-.PHONY: release release-static release-shared copy-headers copy-lib api-header
+.PHONY: release release-static release-shared make-headers copy-lib
 release:
-	$(MAKE) MODE=release all copy-headers copy-lib api-header 
+	$(MAKE) MODE=release all make-headers copy-lib
 release-static:
-	$(MAKE) MODE=release STATIC=1 SHARED=0 all copy-headers copy-lib api-header 
+	$(MAKE) MODE=release STATIC=1 SHARED=0 all make-headers copy-lib
 release-shared:
-	$(MAKE) MODE=release STATIC=0 SHARED=1 all copy-headers copy-lib api-header 
+	$(MAKE) MODE=release STATIC=0 SHARED=1 all make-headers copy-lib
 
-copy-headers:
-	"$(tools_dir)/header_names.sh" $(DEFINES) | \
-	"$(tools_dir)/copy_headers.sh" "$(RELEASEDIR)/include"
+make-headers:
+	"$(tools_dir)/make_headers.pl" --outdir "$(RELEASEDIR)" -- $(DEFINES)
 
 copy-lib:
 	@mkdir -p $(RELEASEDIR)/lib
@@ -331,10 +330,6 @@ endif
 ifeq ($(STATIC),1)
 	@cp -p -- $(STATICLIB) $(RELEASEDIR)/lib
 endif
-
-api-header:
-	"$(tools_dir)/header_names.sh" $(DEFINES) | \
-	"$(tools_dir)/make_api_header.sh" "$(RELEASEDIR)/include/cvec.h"
 
 # ── Convenience ───────────────────────────────────────────────────────────────
 .PHONY: run run-shared run-static clean 

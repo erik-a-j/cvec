@@ -62,7 +62,7 @@ LIBVER_MAJOR := 1
 LIBVER       := 1.0.0
 
 SRCDIR     := $(current_dir)/src
-OUTDIR     := $(current_dir)/out
+OUTDIR     ?= $(current_dir)/out
 BUILDDIR   := $(OUTDIR)/build
 TESTDIR    := $(OUTDIR)/test
 OBJDIR     := $(BUILDDIR)/obj

@@ -1,11 +1,5 @@
 **/.vscode
 **/out
-**/build
 **/compile_commands.json
-**/test*
-!test.c
-Makefile.bak
-tools/*.pl
-tools/*.py
-!tools/make_headers.pl
-tools/d
+a.out
+t.c

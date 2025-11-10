@@ -1,4 +1,6 @@
 
+//#include <assert.h>
+#include <stdarg.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -27,19 +29,88 @@ static maybe_unused size_t my_grow(size_t old, size_t new, size_t size) {
     return cvec_default_grow(old, new, size);
 }
 
-// NOLINTBEGIN
-#define phooks(hp)                                                                                 \
-    do {                                                                                           \
-        if (hp)                                                                                    \
-            printf("hooks->alloc %p,\nhooks->realloc %p,\nhooks->free %p,\nhooks->memcpy "         \
-                   "%p,\nhooks->grow %p\n",                                                        \
-                   (void *)(uintptr_t)hp->alloc, (void *)(uintptr_t)hp->realloc,                   \
-                   (void *)(uintptr_t)hp->free, (void *)(uintptr_t)hp->memcpy,                     \
-                   (void *)(uintptr_t)hp->grow);                                                   \
-        else                                                                                       \
-            printf("hooks == NULL\n");                                                             \
-    } while (0)
-// NOLINTEND
+static maybe_unused void print_hooks(cvec_t *vec) {
+    assert(vec != NULL);
+    cvec_hooks_t *h = &vec->hooks;
+    printf("hooks->alloc %p,\nhooks->realloc %p,\nhooks->free %p,\n", (void *)(uintptr_t)h->alloc,
+           (void *)(uintptr_t)h->realloc, (void *)(uintptr_t)h->free);
+    printf("hooks->memcpy %p,\nhooks->memmove %p,\nhooks->grow %p\n", (void *)(uintptr_t)h->memcpy,
+           (void *)(uintptr_t)h->memmove, (void *)(uintptr_t)h->grow);
+}
+
+static int cmp_hooks(cvec_hooks_t *h1, cvec_hooks_t *h2) {
+    int nneq = 0;
+    if (h1->alloc != h2->alloc) {
+        nneq++;
+    }
+    if (h1->realloc != h2->realloc) {
+        nneq++;
+    }
+    if (h1->free != h2->free) {
+        nneq++;
+    }
+    if (h1->memcpy != h2->memcpy) {
+        nneq++;
+    }
+    if (h1->memmove != h2->memmove) {
+        nneq++;
+    }
+    if (h1->grow != h2->grow) {
+        nneq++;
+    }
+    return nneq;
+}
+static _Noreturn void exit_msg(const char *fmt, ...) {
+    va_list ap;
+    va_start(ap, fmt);
+    vprintf(fmt, ap); //NOLINT
+    va_end(ap);
+    exit(1);
+}
+
+#define ASSERT(expr, msg)    \
+    ((expr)                  \
+     ? (void)(0)             \
+     : exit_msg("\x1b[1;94m%s():\x1b[m " msg "\nAssertion Fail: \x1b[93m'" #expr "'\x1b[m\n", __func__ ))
+#define TEST_SUCCESS(run) do { printf("%d \x1b[1;94m%s(): \x1b[m\x1b[92mPassed!\x1b[m\n", (run), __func__); (run) += 1; } while (0)
+
+static void test_cvec_hooks_init(cvec_hooks_t *hooks, int flag) {
+    static int run = 0;
+    cvec_hooks_t nullhooks = {0};
+    cvec_hooks_init(hooks, flag);
+    ASSERT(cmp_hooks(hooks, &nullhooks) == 6, "cmp_hooks(hooks, &nullhooks) != 6");
+    TEST_SUCCESS(run);
+}
+
+static void test_cvec_default_grow(void) {
+    static int run = 0;
+    ASSERT(cvec_default_grow(0, 1, 0) == 0, "cvec_default_grow(0, 1, 0) != 0");
+    ASSERT(cvec_default_grow(8, 4, 4) == 8, "cvec_default_grow(8, 4, 4) != 8");
+    ASSERT(cvec_default_grow(0, 1, 1) > 0, "cvec_default_grow(0, 1, 1) == 0");
+    ASSERT(cvec_default_grow((SIZE_MAX / 2) + 1, (SIZE_MAX / 2) + 2, (SIZE_MAX / 2) + 1) == 0,
+           "cvec_default_grow((SIZE_MAX / 2) + 1, (SIZE_MAX / 2) + 2, (SIZE_MAX / 2) + 1) != 0");
+    TEST_SUCCESS(run);
+}
+
+static void test_cvec_init(cvec_t *vec, size_t memb_size, cvec_hooks_t *hooks) {
+    static int run = 0;
+    cvec_init(vec, memb_size, hooks);
+    ASSERT(cmp_hooks(&vec->hooks, hooks) == 0, "cmp_hooks(&vec->hooks, hooks) != 0");
+    ASSERT(vec->memb_size == memb_size, "vec->memb_size != memb_size");
+    ASSERT(vec->nmemb_cap == 0, "vec->nmemb_cap != 0");
+    ASSERT(vec->nmemb == 0, "vec->nmemb != 0");
+    ASSERT(vec->data == NULL, "vec->data != NULL");
+    ASSERT(vec->error == ECVEC_NONE, "vec->error != ECVEC_NONE");
+    TEST_SUCCESS(run);
+}
+static void test_cvec_free(cvec_t *vec) {
+    static int run = 0;
+    cvec_free(vec);
+    ASSERT(vec->data == NULL, "vec->data != NULL");
+    ASSERT(vec->nmemb_cap == 0, "vec->nmemb_cap != 0");
+    ASSERT(vec->nmemb == 0, "vec->nmemb != 0");
+    TEST_SUCCESS(run);
+}
 
 #define CVEC_T int
 #include "../cvec_new.h"
@@ -52,11 +123,15 @@ int main(void) {
     h.memcpy = my_memcpy;
     h.grow = my_grow;
     cvec_t v;
-    cvec_init(&v, sizeof(char), &h);
+    test_cvec_init(&v, sizeof(char), &h);
 
-    //printf("sizeof(error): %zu\n", alignof(intvec_t));
+    cvec_hooks_t test_hook1 = {0};
+    test_cvec_hooks_init(&test_hook1, CVEC_HOOKS_INIT_OVERWRITE);
+    cvec_hooks_t test_hook2 = {.alloc = my_alloc};
+    test_cvec_hooks_init(&test_hook2, CVEC_HOOKS_INIT_PARTIAL);
 
-    //End:
-    cvec_free(&v);
+    test_cvec_default_grow();
+
+    test_cvec_free(&v);
     return 0;
 }

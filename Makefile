@@ -28,7 +28,7 @@ WARN ?= -Wall -Wextra -Wpedantic -Wconversion -Wsign-conversion \
         -Wno-unused-parameter -Wno-unknown-pragmas
 
 # Recompose CFLAGS/LDFLAGS with mode + extras
-CFLAGS  := $(CSTD) $(WARN) $(DEFINES) $(DEPGEN)
+CFLAGS  := -g $(CSTD) $(WARN) $(DEFINES) $(DEPGEN)
 LDFLAGS := 
 
 # ── Default ───────────────────────────────────────────────────────────────────

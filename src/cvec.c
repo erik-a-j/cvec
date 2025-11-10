@@ -98,8 +98,8 @@ int cvec_resize(cvec_t *vec, size_t nmemb) {
         vec->error |= ECVEC_OVERFLOW;
         return -1;
     }
-    void *newdata = vec->nmemb_cap ? cvec_raw_realloc(vec, nmemb * vec->memb_size)
-                                   : cvec_raw_alloc(vec, nmemb * vec->memb_size);
+    void *newdata =
+        vec->nmemb_cap ? cvec_raw_realloc(vec, nmemb * vec->memb_size) : cvec_raw_alloc(vec, nmemb * vec->memb_size);
     if (!newdata) {
         return -1;
     }
@@ -127,8 +127,7 @@ int cvec_push(cvec_t *vec, const void *elem) {
     if (cvec_reserve(vec, vec->nmemb + 1) != 0) {
         return -1;
     }
-    if (!cvec_raw_memcpy(vec, (char *)vec->data + vec->nmemb * vec->memb_size, elem,
-                         vec->memb_size)) {
+    if (!cvec_raw_memcpy(vec, (char *)vec->data + vec->nmemb * vec->memb_size, elem, vec->memb_size)) {
         return -1;
     }
     vec->nmemb += 1;
@@ -148,12 +147,11 @@ int cvec_pushn(cvec_t *vec, const void *elem, size_t count) {
         return -1;
     }
     for (size_t i = 0; i < count; i++) {
-        if (!cvec_raw_memcpy(vec, (char *)vec->data + vec->nmemb * vec->memb_size, elem, count)) {
+        if (!cvec_raw_memcpy(vec, (char *)vec->data + vec->nmemb * vec->memb_size, elem, vec->memb_size)) {
             return -1;
         }
         vec->nmemb++;
     }
 
-    vec->nmemb = want;
     return 0;
 }

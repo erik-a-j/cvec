@@ -76,9 +76,6 @@ void cvec_free(cvec_t *vec) {
     cvec_raw_free(vec, vec->data);
     vec->data = NULL;
     vec->nmemb_cap = vec->nmemb = 0;
-    if (!(vec->error & ECVEC_MISSING_FREE_FN)) {
-        vec->error = ECVEC_NONE;
-    }
 }
 
 int cvec_resize(cvec_t *vec, size_t nmemb) {
@@ -86,12 +83,7 @@ int cvec_resize(cvec_t *vec, size_t nmemb) {
         return 0;
     }
     if (nmemb == 0) {
-        cvec_raw_free(vec, vec->data);
-        vec->data = NULL;
-        vec->nmemb_cap = vec->nmemb = 0;
-        if (!(vec->error & ECVEC_MISSING_FREE_FN)) {
-            vec->error = ECVEC_NONE;
-        }
+        cvec_free(vec);
         return 0;
     }
     if (nmemb > SIZE_MAX / vec->memb_size) {
@@ -124,6 +116,10 @@ int cvec_reserve(cvec_t *vec, size_t nmemb) {
 }
 
 int cvec_push(cvec_t *vec, const void *elem) {
+    if (vec->nmemb == SIZE_MAX) {
+        vec->error |= ECVEC_OVERFLOW;
+        return -1;
+    }
     if (cvec_reserve(vec, vec->nmemb + 1) != 0) {
         return -1;
     }

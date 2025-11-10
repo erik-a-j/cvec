@@ -5,24 +5,24 @@
 #include <string.h>
 #include "../cvec.h"
 
-static __attribute__((unused)) void *my_alloc(size_t size) {
+#define maybe_unused __attribute__((unused))
+static maybe_unused void *my_alloc(size_t size) {
     printf("%s called, size: %zu\n", __func__, size);
     return malloc(size);
 }
-static __attribute__((unused)) void *my_realloc(void *ptr, size_t size) {
+static maybe_unused void *my_realloc(void *ptr, size_t size) {
     printf("%s called, ptr: %p, size: %zu\n", __func__, ptr, size);
     return realloc(ptr, size);
 }
-static __attribute__((unused)) void my_free(void *ptr) {
+static maybe_unused void my_free(void *ptr) {
     printf("%s called, ptr: %p\n", __func__, ptr);
     free(ptr);
 }
-static __attribute__((unused)) void *my_memcpy(void *restrict dst, const void *restrict src,
-                                               size_t n) {
+static maybe_unused void *my_memcpy(void *restrict dst, const void *restrict src, size_t n) {
     printf("%s called, dst: %p, src: %p, n: %zu\n", __func__, dst, src, n);
     return memcpy(dst, src, n);
 }
-static __attribute__((unused)) size_t my_grow(size_t old, size_t new, size_t size) {
+static maybe_unused size_t my_grow(size_t old, size_t new, size_t size) {
     printf("%s called, old: %zu, new: %zu, size: %zu\n", __func__, old, new, size);
     return cvec_default_grow(old, new, size);
 }
@@ -41,7 +41,7 @@ static __attribute__((unused)) size_t my_grow(size_t old, size_t new, size_t siz
     } while (0)
 // NOLINTEND
 
-#define CVEC_NEW_T int
+#define CVEC_T int
 #include "../cvec_new.h"
 
 int main(void) {

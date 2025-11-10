@@ -3,7 +3,7 @@ current_dir := $(patsubst %/,%,$(dir $(mkfile_path)))
 tools_dir   := $(current_dir)/tools
 
 CC      ?= gcc
-CSTD    := -std=c11
+CSTD    ?= -std=c11
 DEFINES :=
 DEPGEN  := -MMD -MP
 

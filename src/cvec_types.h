@@ -4,21 +4,23 @@
 #include <stdint.h>
 
 #if __STDC_VERSION__ >= 202311L
-#define CVEC_ERROR_T cvec_error_t : uint_least32_t
+#define CVEC_ERROR_TAG cvec_error_tag : uint_least32_t
 #else
-#define CVEC_ERROR_T cvec_error_t
+#define CVEC_ERROR_TAG cvec_error_tag
 #endif
-enum CVEC_ERROR_T {
+enum CVEC_ERROR_TAG {
     ECVEC_NONE = 0u,
-    ECVEC_MISSING_ALLOC_FN = (1u << 0),
-    ECVEC_MISSING_REALLOC_FN = (1u << 1),
-    ECVEC_MISSING_FREE_FN = (1u << 2),
-    ECVEC_MISSING_GROW_FN = (1u << 3),
-    ECVEC_MISSING_MEMCPY_FN = (1u << 4),
-    ECVEC_OVERFLOW = (1u << 5)
+    ECVEC_OVERFLOW = (1u << 0),
+    ECVEC_INVALID_INDEX = (1u << 1),
+    ECVEC_MISSING_ALLOC_FN = (1u << 2),
+    ECVEC_MISSING_REALLOC_FN = (1u << 3),
+    ECVEC_MISSING_FREE_FN = (1u << 4),
+    ECVEC_MISSING_GROW_FN = (1u << 5),
+    ECVEC_MISSING_MEMCPY_FN = (1u << 6),
+    ECVEC_MISSING_MEMMOVE_FN = (1u << 7),
 };
 #if __STDC_VERSION__ >= 202311L
-typedef enum cvec_error_t cvec_error_t;
+typedef enum cvec_error_tag cvec_error_t;
 #else
 typedef uint_least32_t cvec_error_t;
 #endif
@@ -27,6 +29,7 @@ typedef void *(*alloc_fn_t)(size_t size);
 typedef void *(*realloc_fn_t)(void *ptr, size_t size);
 typedef void (*free_fn_t)(void *ptr);
 typedef void *(*memcpy_fn_t)(void *restrict dst, const void *restrict src, size_t n);
+typedef void *(*memmove_fn_t)(void *dst, const void *src, size_t n);
 typedef size_t (*grow_fn_t)(size_t old_nmemb, size_t new_nmemb, size_t memb_size);
 
 typedef struct cvec_hooks_t {
@@ -34,6 +37,7 @@ typedef struct cvec_hooks_t {
     realloc_fn_t realloc;
     free_fn_t free;
     memcpy_fn_t memcpy;
+    memmove_fn_t memmove;
     grow_fn_t grow;
 } cvec_hooks_t;
 

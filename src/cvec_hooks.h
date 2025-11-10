@@ -7,15 +7,14 @@ size_t cvec_default_grow(size_t old_nmemb, size_t new_nmemb, size_t memb_size);
 #ifndef CVEC_CUSTOM_ALLOCATORS
 #include <stdlib.h>
 #endif
-#ifndef CVEC_CUSTOM_MEMCPY
+#if !defined(CVEC_CUSTOM_MEMCPY) || !defined(CVEC_CUSTOM_MEMMOVE)
 #include <string.h>
 #endif
 
 #define CVEC_HOOKS_INIT_OVERWRITE 0
 #define CVEC_HOOKS_INIT_PARTIAL   1
 
-static inline void cvec_hooks_init(cvec_hooks_t *hooks, int flag)
-{
+static inline void cvec_hooks_init(cvec_hooks_t *hooks, int flag) {
     cvec_hooks_t default_hooks = {
 #ifdef CVEC_CUSTOM_ALLOCATORS
         .alloc = NULL,
@@ -30,6 +29,11 @@ static inline void cvec_hooks_init(cvec_hooks_t *hooks, int flag)
         .memcpy = NULL,
 #else
         .memcpy = memcpy,
+#endif
+#ifdef CVEC_CUSTOM_MEMMOVE
+        .memmove = NULL,
+#else
+        .memmove = memmove,
 #endif
         .grow = cvec_default_grow,
     };

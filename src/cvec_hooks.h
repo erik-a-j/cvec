@@ -53,6 +53,9 @@ static inline void cvec_hooks_init(cvec_hooks_t *hooks, int flag) {
         if (!hooks->memcpy) {
             hooks->memcpy = default_hooks.memcpy;
         }
+        if (!hooks->memmove) {
+            hooks->memmove = default_hooks.memmove;
+        }
         if (!hooks->grow) {
             hooks->grow = default_hooks.grow;
         }

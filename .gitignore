@@ -1,5 +1,8 @@
 **/.vscode
 **/out
 **/compile_commands.json
+test/Unity
+test/*
+!test/*.c
 a.out
 t.c

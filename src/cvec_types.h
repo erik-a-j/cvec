@@ -32,6 +32,8 @@ typedef int (*pushn_fn_t)(cvec_t *vec, const void *elem, size_t count);
 typedef void *(*insert_fn_t)(cvec_t *vec, const void *elem, size_t index);
 typedef void *(*erase_fn_t)(cvec_t *vec, size_t first, size_t last);
 
+#define CVEC_HOOKS_COUNT 11
+
 typedef struct cvec_hooks_t {
     alloc_fn_t alloc;
     realloc_fn_t realloc;

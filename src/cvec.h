@@ -3,31 +3,48 @@
 #include "cvec_hooks.h"
 #include "cvec_types.h"
 
-void cvec_init(cvec_t *vec, size_t memb_size, const cvec_hooks_t *hooks);
+static inline void cvec_init(cvec_t *vec, size_t memb_size, const cvec_hooks_t *hooks) {
+    vec->hooks = hooks ? *hooks : (cvec_hooks_t){0};
+    cvec_hooks_init(&vec->hooks, CVEC_HOOKS_INIT_PARTIAL);
+    vec->memb_size = memb_size;
+    vec->data = NULL;
+    vec->nmemb_cap = vec->nmemb = 0;
+    vec->error = ECVEC_NONE;
+}
+static inline void cvec_free(cvec_t *vec) {
+    hooks_raw_free(vec, vec->data);
+    vec->data = NULL;
+    vec->nmemb_cap = vec->nmemb = 0;
+}
+static inline int cvec_reserve(cvec_t *vec, size_t nmemb) {
+    if (nmemb == 0 || nmemb <= vec->nmemb_cap) {
+        return 0;
+    }
 
-void cvec_free(cvec_t *vec);
-
-int cvec_resize(cvec_t *vec, size_t nmemb);
-
-int cvec_reserve(cvec_t *vec, size_t nmemb);
-
-int cvec_push(cvec_t *vec, const void *elem);
-
-int cvec_pushn(cvec_t *vec, const void *elem, size_t count);
-
-void *cvec_insert(cvec_t *vec, const void *elem, size_t index);
-
-void *cvec_erase(cvec_t *vec, size_t first, size_t last);
-
-static inline int cvec_shrink_to_fit(cvec_t *vec) {
-    return cvec_resize(vec, vec->nmemb ? vec->nmemb : 0);
+    size_t new_nmemb = hooks_raw_grow(vec, vec->nmemb_cap, nmemb, vec->memb_size);
+    if (new_nmemb == 0) {
+        return -1;
+    }
+    return hooks_raw_resize(vec, new_nmemb);
 }
 
+static inline int cvec_shrink_to_fit(cvec_t *vec) {
+    return hooks_raw_resize(vec, vec->nmemb ? vec->nmemb : 0);
+}
 static inline int cvec_shrink_to(cvec_t *vec, size_t nmemb) {
     if (nmemb >= vec->nmemb_cap) {
         return 0;
     }
-    return cvec_resize(vec, nmemb);
+    return hooks_raw_resize(vec, nmemb);
+}
+
+static inline void cvec_pop(cvec_t *vec) {
+    if (vec->nmemb > 0) {
+        vec->nmemb -= 1;
+    }
+}
+static inline void cvec_clear(cvec_t *vec) {
+    vec->nmemb = 0;
 }
 
 static inline int cvec_empty(const cvec_t *vec) {
@@ -43,10 +60,6 @@ static inline size_t cvec_max_size(const cvec_t *vec) {
     return SIZE_MAX / vec->memb_size;
 }
 
-static inline void cvec_clear(cvec_t *vec) {
-    vec->nmemb = 0;
-}
-
 static inline void *cvec_data(cvec_t *vec);
 static inline const void *cvec_cdata(const cvec_t *vec);
 static inline void *cvec_front(cvec_t *vec);
@@ -58,11 +71,5 @@ static inline const void *cvec_cat(const cvec_t *vec, size_t index);
 static inline void *cvec_steal(cvec_t *vec);
 #define CVEC_T_BASE_
 #include "cvec_new.h"
-
-static inline void cvec_pop(cvec_t *vec) {
-    if (vec->nmemb > 0) {
-        vec->nmemb -= 1;
-    }
-}
 
 #endif /*CVEC_H*/

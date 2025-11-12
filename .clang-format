@@ -97,10 +97,16 @@ IncludeBlocks: Preserve
 IncludeCategories:
   - Regex: "^<(.*)>"
     Priority: 0
-  - Regex: '^"(.*)"'
+  - Regex: '^"cvec_types[^"]*"'
     Priority: 1
-  - Regex: "(.*)"
+  - Regex: '^"cvec_util[^"]*"'
+    Priority: 1
+  - Regex: '^"cvec[^"]*"'
     Priority: 2
+  - Regex: '^"(.*)"'
+    Priority: 3
+  - Regex: "(.*)"
+    Priority: 4
 IncludeIsMainRegex: "(Test)?$"
 IncludeIsMainSourceRegex: ""
 IndentAccessModifiers: false

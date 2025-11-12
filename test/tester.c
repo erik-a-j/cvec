@@ -1,3 +1,4 @@
+#include <stddef.h>
 #include "cvec.h"
 #include "unity.h"
 

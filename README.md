@@ -12,6 +12,6 @@ It provides a flexible and type-safe API that can be customized via user-defined
 
 ## Hooks ##
 
-| Typedef                             | Description       |
-| ----------------------------------- | ----------------- |
-| [`alloc_fn_t`](../src/cvec_types.h) | malloc equivilant |
+| Typedef                          | Description       |
+| -------------------------------- | ----------------- |
+| [`alloc_fn_t`](src/cvec_types.h) | malloc equivilant |

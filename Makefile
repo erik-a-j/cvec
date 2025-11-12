@@ -22,7 +22,7 @@ ifeq ($(filter $(BOOTSTRAP_SKIP),$(MAKECMDGOALS)),)
 endif
 
 CC      ?= gcc
-CSTD    ?= c11
+CSTD    ?= c99
 DEFINES :=
 
 SRC   := $(wildcard $(SRCDIR)/*.c)

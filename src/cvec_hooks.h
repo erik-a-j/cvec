@@ -9,82 +9,36 @@ int default_cvec_pushn(cvec_t *vec, const void *elem, size_t count);
 void *default_cvec_insert(cvec_t *vec, const void *elem, size_t index);
 void *default_cvec_erase(cvec_t *vec, size_t first, size_t last);
 
-#ifndef CVEC_CUSTOM_ALLOCATORS
-#include <stdlib.h>
-#endif
-#if !defined(CVEC_CUSTOM_MEMCPY) || !defined(CVEC_CUSTOM_MEMMOVE)
-#include <string.h>
-#endif
+//#ifndef CVEC_CUSTOM_ALLOCATORS
+//#include <stdlib.h>
+//#endif
+//#if !defined(CVEC_CUSTOM_MEMCPY) || !defined(CVEC_CUSTOM_MEMMOVE)
+//#include <string.h>
+//#endif
 
 #define CVEC_HOOKS_INIT_OVERWRITE 0
 #define CVEC_HOOKS_INIT_PARTIAL   1
 
-static inline void cvec_hooks_init(cvec_hooks_t *hooks, int flag) {
-    cvec_hooks_t default_hooks = {
-#ifdef CVEC_CUSTOM_ALLOCATORS
-        .alloc = NULL,
-        .realloc = NULL,
-        .free = NULL,
-#else
-        .alloc = malloc,
-        .realloc = realloc,
-        .free = free,
-#endif
-#ifdef CVEC_CUSTOM_MEMCPY
-        .memcpy = NULL,
-#else
-        .memcpy = memcpy,
-#endif
-#ifdef CVEC_CUSTOM_MEMMOVE
-        .memmove = NULL,
-#else
-        .memmove = memmove,
-#endif
-        .grow = default_cvec_grow,
-        .resize = default_cvec_resize,
-        .push = default_cvec_push,
-        .pushn = default_cvec_pushn,
-        .insert = default_cvec_insert,
-        .erase = default_cvec_erase,
-    };
+static inline void cvec_hooks_init(cvec_hooks_t *hooks, int flag);
+#define CVEC_HOOKS_INIT_BASE_
+#include "cvec_hooks_init.h"
 
-    if (flag == CVEC_HOOKS_INIT_OVERWRITE) {
-        *hooks = default_hooks;
-    } else if (flag == CVEC_HOOKS_INIT_PARTIAL) {
-        if (!hooks->alloc) {
-            hooks->alloc = default_hooks.alloc;
-        }
-        if (!hooks->realloc) {
-            hooks->realloc = default_hooks.realloc;
-        }
-        if (!hooks->free) {
-            hooks->free = default_hooks.free;
-        }
-        if (!hooks->memcpy) {
-            hooks->memcpy = default_hooks.memcpy;
-        }
-        if (!hooks->memmove) {
-            hooks->memmove = default_hooks.memmove;
-        }
-        if (!hooks->grow) {
-            hooks->grow = default_hooks.grow;
-        }
-        if (!hooks->resize) {
-            hooks->resize = default_hooks.resize;
-        }
-        if (!hooks->push) {
-            hooks->push = default_hooks.push;
-        }
-        if (!hooks->pushn) {
-            hooks->pushn = default_hooks.pushn;
-        }
-        if (!hooks->insert) {
-            hooks->insert = default_hooks.insert;
-        }
-        if (!hooks->erase) {
-            hooks->erase = default_hooks.erase;
-        }
-    }
+static inline int cvec_hookscmp(cvec_hooks_t *h1, cvec_hooks_t *h2) {
+    int nneq = 0;
+#define HOOKCMP(memb) if (h1->memb != h2->memb) ++nneq
+    HOOKCMP(alloc);
+    HOOKCMP(realloc);
+    HOOKCMP(free);
+    HOOKCMP(memcpy);
+    HOOKCMP(memmove);
+    HOOKCMP(grow);
+    HOOKCMP(resize);
+    HOOKCMP(push);
+    HOOKCMP(pushn);
+    HOOKCMP(insert);
+    HOOKCMP(erase);
+#undef HOOKCMP
+    return nneq;
 }
 
 static inline void *hooks_raw_alloc(cvec_t *vec, size_t size) {

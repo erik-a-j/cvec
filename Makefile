@@ -2,19 +2,38 @@ mkfile_path := $(abspath $(lastword $(MAKEFILE_LIST)))
 current_dir := $(patsubst %/,%,$(dir $(mkfile_path)))
 tools_dir   := $(current_dir)/tools
 
+UNITYGITURL := https://github.com/ThrowTheSwitch/Unity.git
+
+SRCDIR   := $(current_dir)/src
+TSRCDIR  := $(current_dir)/test
+UDIR     := $(TSRCDIR)/third/Unity
+USRCDIR  := $(UDIR)/src
+OUTDIR   := $(current_dir)/out
+OBJDIR   := $(OUTDIR)/obj
+DEPDIR   := $(OUTDIR)/deps
+RESDIR   := $(OUTDIR)/results
+
+BOOTSTRAP_SKIP := clean
+ifeq ($(filter $(BOOTSTRAP_SKIP),$(MAKECMDGOALS)),)
+  ifneq ($(wildcard $(UDIR)/.git),$(UDIR)/.git)
+    $(info [bootstrap] Cloning Unity into $(UDIR)...)
+    $(shell mkdir -p $(dir $(UDIR)) && git clone --depth=1 $(UNITYGITURL) $(UDIR) 1>&2)
+  endif
+endif
+
 CC      ?= gcc
 CSTD    ?= -std=c11
 DEFINES :=
-DEPGEN  := -MMD -MP
 
-SRCDIR     := $(current_dir)/src
-OUTDIR     ?= $(current_dir)/out
-BUILDDIR   := $(OUTDIR)/build
-OBJDIR     := $(BUILDDIR)/obj
-
-SRC   := $(wildcard $(SRCDIR)/*.c) $(wildcard $(SRCDIR)/*/*.c)
-HDR   := $(wildcard $(SRCDIR)/*.h) $(wildcard $(SRCDIR)/*/*.h)
+SRC   := $(wildcard $(SRCDIR)/*.c)
+TSRC  := $(wildcard $(TSRCDIR)/*.c)
+USRC   = $(wildcard $(USRCDIR)/*.c)
+#HDR   := $(wildcard $(SRCDIR)/*.h)
+#THDR  := $(wildcard $(TSRCDIR)/*.h)
+#UHDR   = $(wildcard $(USRCDIR)/*.h)
 OBJ   := $(patsubst $(SRCDIR)/%.c,$(OBJDIR)/%.o,$(SRC))
+TOBJ  := $(patsubst $(TSRCDIR)/%.c,$(OBJDIR)/%.o,$(TSRC))
+UOBJ   = $(patsubst $(USRCDIR)/%.c,$(OBJDIR)/%.o,$(USRC))
 
 TESTBIN := $(OUTDIR)/test
 
@@ -27,33 +46,65 @@ WARN ?= -Wall -Wextra -Wpedantic -Wconversion -Wsign-conversion \
         -Wlogical-op -Wduplicated-cond -Wduplicated-branches \
         -Wno-unused-parameter -Wno-unknown-pragmas
 
-# Recompose CFLAGS/LDFLAGS with mode + extras
-CFLAGS  := -g $(CSTD) $(WARN) $(DEFINES) $(DEPGEN)
-LDFLAGS := 
+COMPILE = $(CC) -c
+LINK    = $(CC)
+CFLAGS  = $(CSTD) $(WARN) $(DEFINES)
+LDFLAGS = 
+
+RESULTS = $(patsubst $(TSRCDIR)/%.c,$(RESDIR)/%.txt,$(TSRC))
+
+PASSED = `grep -s PASS $(RESDIR)/*.txt`
+FAIL = `grep -s FAIL $(RESDIR)/*.txt`
+IGNORE = `grep -s IGNORE $(RESDIR)/*.txt`
+
+
+CFLAGS_SRC   := -I$(SRCDIR)
+CFLAGS_TEST  := -I$(SRCDIR) -I$(TSRCDIR) -I$(USRCDIR) -Wno-missing-prototypes -Wno-bad-function-cast
+CFLAGS_UNITY := -I$(USRCDIR) -Wno-all -Wno-pedantic -Wno-conversion -Wno-float-equal -Wno-bad-function-cast
 
 # ── Default ───────────────────────────────────────────────────────────────────
-.PHONY: all
-all: $(TESTBIN)
-
-# ── Compile rules ─────────────────────────────────────────────────────────────
-$(OBJDIR)/%.o: $(SRCDIR)/%.c
-	@echo "  CC      $<"
-	@mkdir -p $(@D)
-	$(CC) $(CFLAGS) $(DEFINES) -c $< -o $@
-
-$(TESTBIN): $(OBJ)
-	@echo "  CC      $<"
-	@mkdir -p $(@D)
-	$(CC) $(LDFLAGS) -o $@ $(OBJ) $(LDLIBS)
-
-
-# ── Convenience ───────────────────────────────────────────────────────────────
-.PHONY: clean 
+.PHONY: all tests clean
+.DELETE_ON_ERROR:
+all: tests
 
 clean:
 	@echo "  CLEAN   objects & deps"
 	rm -rf $(OUTDIR)
 
--include $(OBJ:.o=.d)
+tests: $(UDIR) $(RESULTS) $(TESTBIN)
+	@echo -e "-----------------------\nIGNORES:\n-----------------------"
+	@echo "$(IGNORE)"
+	@echo -e "-----------------------\nFAILURES:\n-----------------------"
+	@echo "$(FAIL)"
+	@echo -e "-----------------------\nPASSED:\n-----------------------"
+	@echo "$(PASSED)"
+	@echo -e "\nDONE"
 
-.DELETE_ON_ERROR:
+$(RESDIR)/%.txt: $(TESTBIN)
+	@mkdir -p $(RESDIR)
+	-$< > $@ 2>&1
+
+$(patsubst $(SRCDIR)/%.c,$(OBJDIR)/%.o,$(SRC)): CFLAGS += $(CFLAGS_SRC)
+$(patsubst $(USRCDIR)/%.c,$(OBJDIR)/%.o,$(USRC)): CFLAGS += $(CFLAGS_UNITY)
+$(patsubst $(TSRCDIR)/%.c,$(OBJDIR)/%.o,$(TSRC)): CFLAGS += $(CFLAGS_TEST)
+
+$(TESTBIN): $(OBJ) $(UOBJ) $(TOBJ)
+	@echo "  LD  $@"
+	@mkdir -p $(@D)
+	$(LINK) $(LDFLAGS) -o $@ $^
+
+vpath %.c $(SRCDIR) $(USRCDIR) $(TSRCDIR)
+
+$(OBJDIR)/%.o: %.c
+	@echo "  CC  $<"
+	@mkdir -p $(OBJDIR) $(DEPDIR)
+	$(COMPILE) $(CFLAGS) -MMD -MP -MF $(DEPDIR)/$*.d -MT $@ -o $@ $<
+
+-include $(patsubst $(OBJDIR)/%.o,$(DEPDIR)/%.d,$(OBJ) $(TOBJ) $(UOBJ))
+
+#$(UDIR):
+#	@echo "  git cloning $(UNITYGITURL)..."
+#	@mkdir -p $(dir $(UDIR))
+#	@git clone $(UNITYGITURL) $(UDIR)
+
+

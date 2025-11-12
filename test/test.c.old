@@ -38,31 +38,6 @@ static maybe_unused void print_hooks(cvec_t *vec) {
            (void *)(uintptr_t)h->memmove, (void *)(uintptr_t)h->grow);
 }
 
-static int cmp_hooks(cvec_hooks_t *h1, cvec_hooks_t *h2) {
-    int nneq = 0;
-    if (h1->alloc != h2->alloc) {
-        nneq++;
-    }
-    if (h1->realloc != h2->realloc) {
-        nneq++;
-    }
-    if (h1->free != h2->free) {
-        nneq++;
-    }
-    if (h1->memcpy != h2->memcpy) {
-        nneq++;
-    }
-    if (h1->memmove != h2->memmove) {
-        nneq++;
-    }
-    if (h1->grow != h2->grow) {
-        nneq++;
-    }
-    if (h1->resize != h2->resize) {
-        nneq++;
-    }
-    return nneq;
-}
 static _Noreturn void exit_msg(const char *fmt, ...) {
     va_list ap;
     va_start(ap, fmt);

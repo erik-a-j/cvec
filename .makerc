@@ -6,7 +6,7 @@ bear_make() {
     if [[ "$1" =~ ^(run.*|clean)$ ]]; then
         /usr/bin/make "$@"
         ec=$?
-        [[ "$1" == "clean" ]] && rm compile_commands.json
+        [[ "$1" == "clean" ]] && [[ -f compile_commands.json ]] && rm compile_commands.json
     else
         echo "bear --append -- make:"
         bear --append -- /usr/bin/make "$@"

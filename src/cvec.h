@@ -1,5 +1,6 @@
 #ifndef CVEC_H
 #define CVEC_H
+#include <assert.h>
 #include "cvec_hooks.h"
 #include "cvec_types.h"
 

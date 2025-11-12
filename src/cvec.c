@@ -133,8 +133,7 @@ void *default_cvec_insert(cvec_t *vec, const void *elem, size_t index) {
 
 void *default_cvec_erase(cvec_t *vec, size_t first, size_t last) {
     if (vec->nmemb == 0) {
-        vec->error |= ECVEC_INVALID_INDEX;
-        return NULL;
+        return vec->data;
     }
     if (first > last) {
         size_t tmp = first;

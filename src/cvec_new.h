@@ -1,5 +1,6 @@
-#include <assert.h>
-#include "cvec.h"
+#ifndef CVEC_H
+#error "cvec.h must be included first"
+#endif
 
 #if !defined(CVEC_T) && !defined(CVEC_T_BASE_)
 #error "must define type"

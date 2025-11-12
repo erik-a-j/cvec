@@ -1,5 +1,3 @@
-#include "cvec.h"
-
 #ifndef CVEC_H
 #error "cvec.h must be included first"
 #endif

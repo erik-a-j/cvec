@@ -65,16 +65,16 @@ static inline void CVEC_INIT_T(cvec_t *vec, const cvec_hooks_t *hooks) {
     cvec_init(vec, sizeof(CVEC_T), hooks);
 }
 static inline int CVEC_PUSH_T(cvec_t *vec, CVEC_T elem) {
-    return cvec_push(vec, &elem);
+    return hooks_raw_push(vec, &elem);
 }
 static inline int CVEC_PUSHN_T(cvec_t *vec, CVEC_T elem, size_t count) {
-    return cvec_pushn(vec, &elem, count);
+    return hooks_raw_pushn(vec, &elem, count);
 }
 static inline CVEC_T *CVEC_INSERT_T(cvec_t *vec, CVEC_T elem, size_t index) {
-    return (CVEC_T *)cvec_insert(vec, &elem, index);
+    return (CVEC_T *)hooks_raw_insert(vec, &elem, index);
 }
 static inline CVEC_T *CVEC_ERASE_T(cvec_t *vec, size_t first, size_t last) {
-    return (CVEC_T *)cvec_erase(vec, first, last);
+    return (CVEC_T *)hooks_raw_erase(vec, first, last);
 }
 #endif
 static inline CVEC_T *CVEC_DATA_T(cvec_t *vec) {

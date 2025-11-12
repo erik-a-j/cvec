@@ -1,6 +1,8 @@
+#ifndef CVEC_H
+#error "cvec.h must be included first"
+#endif
 #ifndef CVEC_HOOKS_H
 #define CVEC_HOOKS_H
-#include "cvec_types.h"
 
 size_t default_cvec_grow(size_t old_nmemb, size_t new_nmemb, size_t memb_size);
 int default_cvec_resize(cvec_t *vec, size_t nmemb);
@@ -41,6 +43,7 @@ static inline int cvec_hookscmp(cvec_hooks_t *h1, cvec_hooks_t *h2) {
     return nneq;
 }
 
+#ifdef __STRICT_ANSI__
 static inline void *hooks_raw_alloc(cvec_t *vec, size_t size) {
     if (!vec->hooks.alloc) {
         vec->error |= ECVEC_MISSING_HOOK_ALLOC;
@@ -118,5 +121,117 @@ static inline void *hooks_raw_erase(cvec_t *vec, size_t first, size_t last) {
     }
     return vec->hooks.erase(vec, first, last);
 }
+#else
+#define hooks_raw_alloc(vec, size)                           _hooks_raw_alloc((vec), (size))
+#define hooks_raw_realloc(vec, size)                         _hooks_raw_realloc((vec), (size))
+#define hooks_raw_free(vec, ptr)                             _hooks_raw_free((vec), (ptr))
+#define hooks_raw_memcpy(vec, dst, src, n)                   _hooks_raw_memcpy((vec), (dst), (src), (n))
+#define hooks_raw_memmove(vec, dst, src, n)                  _hooks_raw_memmove((vec), (dst), (src), (n))
+#define hooks_raw_grow(vec, old_nmemb, new_nmemb, memb_size) _hooks_raw_grow((vec), (old_nmemb), (new_nmemb), (memb_size))
+#define hooks_raw_resize(vec, nmemb)                         _hooks_raw_resize((vec), (nmemb))
+#define hooks_raw_push(vec, elem)                            _hooks_raw_push((vec), (elem))
+#define hooks_raw_pushn(vec, elem, count)                    _hooks_raw_pushn((vec), (elem), (count))
+#define hooks_raw_insert(vec, elem, index)                   _hooks_raw_insert((vec), (elem), (index))
+#define hooks_raw_erase(vec, first, last)                    _hooks_raw_erase((vec), (first), (last))
 
-#endif /*CVEC_HOOKS_H*/
+#define _hooks_raw_alloc(vec, size) ({                              \
+    void *_r = NULL; cvec_t *_v = (vec);                            \
+    if (!_v->hooks.alloc) {                                         \
+        _v->error |= ECVEC_MISSING_HOOK_ALLOC;                      \
+    } else {                                                        \
+        _r = _v->hooks.alloc((size));                               \
+    }                                                               \
+    _r;                                                             \
+})
+#define _hooks_raw_realloc(vec, size) ({                            \
+    void *_r = NULL; cvec_t *_v = (vec);                            \
+    if (!_v->hooks.realloc) {                                       \
+        _v->error |= ECVEC_MISSING_HOOK_REALLOC;                    \
+    } else {                                                        \
+        _r = _v->hooks.realloc(_v->data, (size));                   \
+    }                                                               \
+    _r;                                                             \
+})
+#define _hooks_raw_free(vec, ptr) do {                              \
+    cvec_t *_v = (vec);                                             \
+    if (!_v->hooks.free) {                                          \
+        _v->error |= ECVEC_MISSING_HOOK_FREE;                       \
+    } else {                                                        \
+        _v->hooks.free(ptr);                                        \
+    }                                                               \
+} while (0)
+#define _hooks_raw_memcpy(vec, dst, src, n) ({                      \
+    void *_r = NULL; cvec_t *_v = (vec);                            \
+    if (!_v->hooks.memcpy) {                                        \
+        _v->error |= ECVEC_MISSING_HOOK_MEMCPY;                     \
+    } else {                                                        \
+        _r = _v->hooks.memcpy((dst), (src), (n));                   \
+    }                                                               \
+    _r;                                                             \
+})
+#define _hooks_raw_memmove(vec, dst, src, n) ({                     \
+    void *_r = NULL; cvec_t *_v = (vec);                            \
+    if (!_v->hooks.memmove) {                                       \
+        _v->error |= ECVEC_MISSING_HOOK_MEMMOVE;                    \
+    } else {                                                        \
+        _r = _v->hooks.memmove((dst), (src), (n));                  \
+    }                                                               \
+    _r;                                                             \
+})
+#define _hooks_raw_grow(vec, old_nmemb, new_nmemb, memb_size) ({    \
+    size_t _r = 0; cvec_t *_v = (vec);                              \
+    if (!_v->hooks.grow) {                                          \
+        _v->error |= ECVEC_MISSING_HOOK_GROW;                       \
+    } else {                                                        \
+        _r = _v->hooks.grow((old_nmemb), (new_nmemb), (memb_size)); \
+    }                                                               \
+    _r;                                                             \
+})
+#define _hooks_raw_resize(vec, nmemb) ({                            \
+    int _r = -1; cvec_t *_v = (vec);                                \
+    if (!_v->hooks.resize) {                                        \
+        _v->error |= ECVEC_MISSING_HOOK_RESIZE;                     \
+    } else {                                                        \
+        _r = _v->hooks.resize(_v, (nmemb));                         \
+    }                                                               \
+    _r;                                                             \
+})
+#define _hooks_raw_push(vec, elem) ({                               \
+    int _r = -1; cvec_t *_v = (vec);                                \
+    if (!_v->hooks.push) {                                          \
+        _v->error |= ECVEC_MISSING_HOOK_PUSH;                       \
+    } else {                                                        \
+        _r = _v->hooks.push(_v, (elem));                            \
+    }                                                               \
+    _r;                                                             \
+})
+#define _hooks_raw_pushn(vec, elem, count) ({                       \
+    int _r = -1; cvec_t *_v = (vec);                                \
+    if (!_v->hooks.pushn) {                                         \
+        _v->error |= ECVEC_MISSING_HOOK_PUSHN;                      \
+    } else {                                                        \
+        _r = _v->hooks.pushn(_v, (elem), (count));                  \
+    }                                                               \
+    _r;                                                             \
+})
+#define _hooks_raw_insert(vec, elem, index) ({                      \
+    void *_r = NULL; cvec_t *_v = (vec);                            \
+    if (!_v->hooks.insert) {                                        \
+        _v->error |= ECVEC_MISSING_HOOK_INSERT;                     \
+    } else {                                                        \
+        _r = _v->hooks.insert(_v, (elem), (index));                 \
+    }                                                               \
+    _r;                                                             \
+})
+#define _hooks_raw_erase(vec, first, last) ({                       \
+    void *_r = NULL; cvec_t *_v = (vec);                            \
+    if (!_v->hooks.erase) {                                         \
+        _v->error |= ECVEC_MISSING_HOOK_ERASE;                      \
+    } else {                                                        \
+        _r = _v->hooks.erase(_v, (first), (last));                  \
+    }                                                               \
+    _r;                                                             \
+})
+
+#endif /*#ifdef __STRICT_ANSI__*/
+#endif /*#ifndef CVEC_HOOKS_H*/

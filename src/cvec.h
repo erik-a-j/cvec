@@ -1,10 +1,11 @@
 #ifndef CVEC_H
 #define CVEC_H
 #include <assert.h>
-#include "cvec_hooks.h"
 #include "cvec_types.h"
+#include "cvec_hooks.h"
 
 static inline void cvec_init(cvec_t *vec, size_t memb_size, const cvec_hooks_t *hooks) {
+    assert(memb_size > 0 && "memb_size must not be zero!");
     vec->hooks = hooks ? *hooks : (cvec_hooks_t){0};
     cvec_hooks_init(&vec->hooks, CVEC_HOOKS_INIT_PARTIAL);
     vec->memb_size = memb_size;
@@ -27,6 +28,21 @@ static inline int cvec_reserve(cvec_t *vec, size_t nmemb) {
         return -1;
     }
     return hooks_raw_resize(vec, new_nmemb);
+}
+static inline int cvec_resize(cvec_t *vec, size_t nmemb) {
+    return hooks_raw_resize(vec, nmemb);
+}
+static inline int cvec_push(cvec_t *vec, const void *elem) {
+    return hooks_raw_push(vec, elem);
+}
+static inline int cvec_pushn(cvec_t *vec, const void *elem, size_t count) {
+    return hooks_raw_pushn(vec, elem, count);
+}
+static inline void *cvec_insert(cvec_t *vec, const void *elem, size_t index) {
+    return hooks_raw_insert(vec, elem, index);
+}
+static inline void *cvec_erase(cvec_t *vec, size_t first, size_t last) {
+    return hooks_raw_erase(vec, first, last);
 }
 
 static inline int cvec_shrink_to_fit(cvec_t *vec) {

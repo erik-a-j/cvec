@@ -56,7 +56,9 @@ int default_cvec_push(cvec_t *vec, const void *elem) {
     if (cvec_reserve(vec, vec->nmemb + 1) != 0) {
         return -1;
     }
-    if (!hooks_raw_memcpy(vec, (char *)vec->data + vec->nmemb * vec->memb_size, elem, vec->memb_size)) {
+    void *dst = (char *)vec->data + vec->nmemb * vec->memb_size;
+    void *res_memcpy = hooks_raw_memcpy(vec, dst, elem, vec->memb_size);
+    if (!res_memcpy || res_memcpy != dst) {
         return -1;
     }
     vec->nmemb += 1;
@@ -77,7 +79,8 @@ int default_cvec_pushn(cvec_t *vec, const void *elem, size_t count) {
     }
 
     void *dst0 = (char *)vec->data + start * vec->memb_size;
-    if (!hooks_raw_memcpy(vec, dst0, elem, vec->memb_size)) {
+    void *res_memcpy0 = hooks_raw_memcpy(vec, dst0, elem, vec->memb_size);
+    if (!res_memcpy0 || res_memcpy0 != dst0) {
         return -1;
     }
 
@@ -85,7 +88,8 @@ int default_cvec_pushn(cvec_t *vec, const void *elem, size_t count) {
     while (written < count) {
         size_t to_copy = (written <= count - written) ? written : (count - written);
         void *dst = (char *)dst0 + written * vec->memb_size;
-        if (!hooks_raw_memcpy(vec, dst, dst0, to_copy * vec->memb_size)) {
+        void *res_memcpy = hooks_raw_memcpy(vec, dst, dst0, to_copy * vec->memb_size);
+        if (!res_memcpy || res_memcpy != dst) {
             return -1;
         }
         written += to_copy;
@@ -107,8 +111,7 @@ void *default_cvec_insert(cvec_t *vec, const void *elem, size_t index) {
     if (cvec_reserve(vec, vec->nmemb + 1) != 0) {
         return NULL;
     }
-    char *base = (char *)vec->data;
-    char *data = base + index * vec->memb_size;
+    void *data = (char *)vec->data + index * vec->memb_size;
 
     size_t tail_elems = vec->nmemb - index;
     if (tail_elems > 0) {
@@ -117,13 +120,15 @@ void *default_cvec_insert(cvec_t *vec, const void *elem, size_t index) {
             return NULL;
         }
         size_t bytes = tail_elems * vec->memb_size;
-
-        if (!hooks_raw_memmove(vec, data + vec->memb_size, data, bytes)) {
+        void *dst = (char *)data + vec->memb_size;
+        void *res_memmove = hooks_raw_memmove(vec, dst, data, bytes);
+        if (!res_memmove || res_memmove != dst) {
             return NULL;
         }
     }
 
-    if (!hooks_raw_memcpy(vec, data, elem, vec->memb_size)) {
+    void *res_memcpy = hooks_raw_memcpy(vec, data, elem, vec->memb_size);
+    if (!res_memcpy || res_memcpy != data) {
         return NULL;
     }
 
@@ -168,12 +173,12 @@ void *default_cvec_erase(cvec_t *vec, size_t first, size_t last) {
         return NULL;
     }
 
-    char *base = (char *)vec->data;
-    char *dst_first = base + first * vec->memb_size;
-    char *src_after = base + (last + 1) * vec->memb_size;
+    void *dst_first = (char *)vec->data + first * vec->memb_size;
+    void *src_after = (char *)vec->data + (last + 1) * vec->memb_size;
     if (tail_elems > 0) {
         size_t bytes = tail_elems * vec->memb_size;
-        if (!hooks_raw_memmove(vec, dst_first, src_after, bytes)) {
+        void *res_memmove = hooks_raw_memmove(vec, dst_first, src_after, bytes);
+        if (!res_memmove || res_memmove != dst_first) {
             return NULL;
         }
     }

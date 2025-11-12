@@ -22,15 +22,12 @@ ifeq ($(filter $(BOOTSTRAP_SKIP),$(MAKECMDGOALS)),)
 endif
 
 CC      ?= gcc
-CSTD    ?= -std=c11
+CSTD    ?= c11
 DEFINES :=
 
 SRC   := $(wildcard $(SRCDIR)/*.c)
 TSRC  := $(wildcard $(TSRCDIR)/*.c)
 USRC   = $(wildcard $(USRCDIR)/*.c)
-#HDR   := $(wildcard $(SRCDIR)/*.h)
-#THDR  := $(wildcard $(TSRCDIR)/*.h)
-#UHDR   = $(wildcard $(USRCDIR)/*.h)
 OBJ   := $(patsubst $(SRCDIR)/%.c,$(OBJDIR)/%.o,$(SRC))
 TOBJ  := $(patsubst $(TSRCDIR)/%.c,$(OBJDIR)/%.o,$(TSRC))
 UOBJ   = $(patsubst $(USRCDIR)/%.c,$(OBJDIR)/%.o,$(USRC))
@@ -46,9 +43,21 @@ WARN ?= -Wall -Wextra -Wpedantic -Wconversion -Wsign-conversion \
         -Wlogical-op -Wduplicated-cond -Wduplicated-branches \
         -Wno-unused-parameter -Wno-unknown-pragmas
 
+IS_CLANG := $(shell $(CC) --version 2>/dev/null | head -n 1 | grep -iq clang && echo 1 || echo 0)
+IS_GCC   := $(shell $(CC) --version 2>/dev/null | head -n 1 | grep -iq gcc && echo 1 || echo 0)
+IS_GNU_STD := $(strip $(filter gnu%,$(CSTD)))
+ifneq ($(IS_GNU_STD),)
+  ifeq ($(IS_CLANG),1)
+    WARN += -Wno-gnu-statement-expression -Wno-gnu-statement-expression-from-macro-expansion
+  endif
+  ifeq ($(IS_GCC),1)
+    WARN := $(filter-out -Wpedantic,$(WARN))
+  endif
+endif
+
 COMPILE = $(CC) -c
 LINK    = $(CC)
-CFLAGS  = $(CSTD) $(WARN) $(DEFINES)
+CFLAGS  = -std=$(CSTD) $(WARN) $(DEFINES)
 LDFLAGS = 
 
 RESULTS = $(patsubst $(TSRCDIR)/%.c,$(RESDIR)/%.txt,$(TSRC))
@@ -101,10 +110,4 @@ $(OBJDIR)/%.o: %.c
 	$(COMPILE) $(CFLAGS) -MMD -MP -MF $(DEPDIR)/$*.d -MT $@ -o $@ $<
 
 -include $(patsubst $(OBJDIR)/%.o,$(DEPDIR)/%.d,$(OBJ) $(TOBJ) $(UOBJ))
-
-#$(UDIR):
-#	@echo "  git cloning $(UNITYGITURL)..."
-#	@mkdir -p $(dir $(UDIR))
-#	@git clone $(UNITYGITURL) $(UDIR)
-
 

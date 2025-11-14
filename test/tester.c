@@ -238,6 +238,123 @@ void test_hooks_raw_pushn(void) {
 
     TEST_ASSERT_NULL(v.data);
 }
+void test_hooks_raw_append(void) {
+    cvec_t v;
+    cvec_init(&v, sizeof(int), &g_hooks);
+    TEST_ASSERT_EQUAL_UINT32(ECVEC_NONE, v.error);
+    TEST_ASSERT_EQUAL_size_t(0, v.nmemb);
+
+    /* ---- Subtest 1: append into empty vector ---- */
+    {
+        int src1[] = {1, 2, 3};
+
+        /* Append 3 elements: expect [1, 2, 3] */
+        TEST_ASSERT_EQUAL_INT(0, hooks_raw_append(&v, src1, 3));
+        TEST_ASSERT_EQUAL_size_t(3, v.nmemb);
+
+        int *data = (int *)v.data;
+        TEST_ASSERT_NOT_NULL(data);
+        TEST_ASSERT_EQUAL_INT(1, data[0]);
+        TEST_ASSERT_EQUAL_INT(2, data[1]);
+        TEST_ASSERT_EQUAL_INT(3, data[2]);
+        TEST_ASSERT_EQUAL_UINT32(ECVEC_NONE, v.error);
+    }
+
+    /* ---- Subtest 2: append onto existing data ---- */
+    {
+        int src2[] = {4, 5};
+
+        size_t old_nmemb = v.nmemb;
+        TEST_ASSERT_EQUAL_INT(0, hooks_raw_append(&v, src2, 2));
+        TEST_ASSERT_EQUAL_size_t(old_nmemb + 2, v.nmemb);
+
+        int *data = (int *)v.data;
+        /* now expect [1, 2, 3, 4, 5] */
+        TEST_ASSERT_EQUAL_INT(1, data[0]);
+        TEST_ASSERT_EQUAL_INT(2, data[1]);
+        TEST_ASSERT_EQUAL_INT(3, data[2]);
+        TEST_ASSERT_EQUAL_INT(4, data[3]);
+        TEST_ASSERT_EQUAL_INT(5, data[4]);
+        TEST_ASSERT_EQUAL_UINT32(ECVEC_NONE, v.error);
+    }
+
+    /* ---- Subtest 3: count == 0 is a no-op ---- */
+    {
+        int dummy[] = {42, 43};
+
+        v.error = ECVEC_NONE;
+        size_t old_nmemb = v.nmemb;
+        void *old_data = v.data;
+
+        TEST_ASSERT_EQUAL_INT(0, hooks_raw_append(&v, dummy, 0));
+        TEST_ASSERT_EQUAL_size_t(old_nmemb, v.nmemb);
+        TEST_ASSERT_EQUAL_PTR(old_data, v.data);
+        TEST_ASSERT_EQUAL_UINT32(ECVEC_NONE, v.error);
+    }
+
+    /* ---- Subtest 4: overflow in count * memb_size ---- */
+    {
+        v.error = ECVEC_NONE;
+
+        /* Force memb_size so that count * memb_size overflows the check */
+        v.memb_size = SIZE_MAX / 2;
+        size_t old_nmemb = v.nmemb;
+        size_t old_cap = v.nmemb_cap;
+        void *old_data = v.data;
+
+        int dummy[] = {1, 2, 3};
+        /* count == 3, SIZE_MAX / memb_size will be <= 2, so count > SIZE_MAX/memb_size */
+        TEST_ASSERT_EQUAL_INT(-1, hooks_raw_append(&v, dummy, 3));
+        TEST_ASSERT_TRUE(ECVEC_OVERFLOW & v.error);
+
+        /* vector logical state should not have changed */
+        TEST_ASSERT_EQUAL_size_t(old_nmemb, v.nmemb);
+        TEST_ASSERT_EQUAL_size_t(old_cap, v.nmemb_cap);
+        TEST_ASSERT_EQUAL_PTR(old_data, v.data);
+    }
+
+    /* ---- Subtest 5: overflow in nmemb + count (want < start) ---- */
+    {
+        v.error = ECVEC_NONE;
+
+        v.memb_size = sizeof(int);
+        v.nmemb = SIZE_MAX;
+        size_t old_nmemb = v.nmemb;
+        size_t old_cap = v.nmemb_cap;
+        void *old_data = v.data;
+
+        int dummy[] = {7};
+        /* start = SIZE_MAX, want = start + 10 wraps, so want < start */
+        TEST_ASSERT_EQUAL_INT(-1, hooks_raw_append(&v, dummy, 10));
+        TEST_ASSERT_TRUE(ECVEC_OVERFLOW & v.error);
+
+        TEST_ASSERT_EQUAL_size_t(old_nmemb, v.nmemb);
+        TEST_ASSERT_EQUAL_size_t(old_cap, v.nmemb_cap);
+        TEST_ASSERT_EQUAL_PTR(old_data, v.data);
+    }
+
+    /* ---- Subtest 6: missing append hook ---- */
+    {
+        v.error = ECVEC_NONE;
+
+        v.hooks.append = NULL;
+        size_t old_nmemb = v.nmemb;
+        void *old_data = v.data;
+
+        int dummy[] = {1};
+        TEST_ASSERT_EQUAL_INT(-1, hooks_raw_append(&v, dummy, 1));
+        TEST_ASSERT_TRUE(ECVEC_MISSING_HOOK_APPEND & v.error);
+
+        /* no changes to contents */
+        TEST_ASSERT_EQUAL_size_t(old_nmemb, v.nmemb);
+        TEST_ASSERT_EQUAL_PTR(old_data, v.data);
+    }
+
+    /* cleanup underlying storage using the allocator hook */
+    if (v.data) {
+        g_hooks.free(v.data);
+    }
+}
 void test_hooks_raw_insert(void) {
     cvec_t v;
     cvec_init(&v, sizeof(int), &g_hooks);
@@ -370,6 +487,7 @@ void test_hooks_raw_erase(void) {
     /* clean up */
     g_hooks.free(v.data);
 }
+
 void test_ALL_hooks_raw(void) {
     RUN_TEST(test_hooks_raw_free);
     RUN_TEST(test_hooks_raw_alloc);
@@ -380,6 +498,7 @@ void test_ALL_hooks_raw(void) {
     RUN_TEST(test_hooks_raw_resize);
     RUN_TEST(test_hooks_raw_push);
     RUN_TEST(test_hooks_raw_pushn);
+    RUN_TEST(test_hooks_raw_append);
     RUN_TEST(test_hooks_raw_insert);
     RUN_TEST(test_hooks_raw_erase);
 }

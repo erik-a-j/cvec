@@ -2,7 +2,12 @@
 #include "cvec.h"
 #include "unity.h"
 
-void setUp(void) {}
+static cvec_hooks_t g_hooks;
+
+void setUp(void) {
+    cvec_hooks_init(&g_hooks, CVEC_HOOKS_INIT_OVERWRITE);
+}
+
 void tearDown(void) {}
 
 #define CVEC_HOOKS_INIT_SUFFIX custom_allocators
@@ -70,30 +75,27 @@ void test_cvec_hooks_init(void) {
     cvec_hooks_init_custom_allocators_memcpy_memmove(&hooks, CVEC_HOOKS_INIT_OVERWRITE);
     TEST_ASSERT_EQUAL_INT(CVEC_HOOKS_COUNT - 5, cvec_hookscmp(&hooks, &nullhooks));
 }
-
 void test_cvec_init(void) {
     cvec_t v;
-    cvec_init(&v, sizeof(int), NULL);
+    cvec_init(&v, sizeof(int), &g_hooks);
     TEST_ASSERT_NULL(v.data);
     TEST_ASSERT_EQUAL_size_t(sizeof(int), v.memb_size);
     TEST_ASSERT_EQUAL_size_t(0, v.nmemb_cap);
     TEST_ASSERT_EQUAL_size_t(0, v.nmemb);
     TEST_ASSERT_EQUAL_size_t(ECVEC_NONE, v.error);
 }
-
 void test_hooks_raw_free(void) {
     cvec_t v;
-    cvec_init(&v, sizeof(int), NULL);
+    cvec_init(&v, sizeof(int), &g_hooks);
     hooks_raw_free(&v, v.data);
     TEST_ASSERT_EQUAL_UINT32(ECVEC_NONE, v.error);
     v.hooks.free = NULL;
     hooks_raw_free(&v, v.data);
     TEST_ASSERT_TRUE(ECVEC_MISSING_HOOK_FREE & v.error);
 }
-
 void test_hooks_raw_alloc(void) {
     cvec_t v;
-    cvec_init(&v, sizeof(int), NULL);
+    cvec_init(&v, sizeof(int), &g_hooks);
     void *data = hooks_raw_alloc(&v, v.memb_size);
     TEST_ASSERT_NOT_NULL(data);
     TEST_ASSERT_EQUAL_UINT32(ECVEC_NONE, v.error);
@@ -103,10 +105,9 @@ void test_hooks_raw_alloc(void) {
     TEST_ASSERT_NULL(hooks_raw_alloc(&v, v.memb_size));
     TEST_ASSERT_TRUE(ECVEC_MISSING_HOOK_ALLOC & v.error);
 }
-
 void test_hooks_raw_realloc(void) {
     cvec_t v;
-    cvec_init(&v, sizeof(int), NULL);
+    cvec_init(&v, sizeof(int), &g_hooks);
     void *data = hooks_raw_realloc(&v, v.memb_size);
     TEST_ASSERT_NOT_NULL(data);
     TEST_ASSERT_EQUAL_UINT32(ECVEC_NONE, v.error);
@@ -116,10 +117,9 @@ void test_hooks_raw_realloc(void) {
     TEST_ASSERT_NULL(hooks_raw_realloc(&v, v.memb_size));
     TEST_ASSERT_TRUE(ECVEC_MISSING_HOOK_REALLOC & v.error);
 }
-
 void test_hooks_raw_memcpy(void) {
     cvec_t v;
-    cvec_init(&v, sizeof(int), NULL);
+    cvec_init(&v, sizeof(int), &g_hooks);
     int *data = v.hooks.alloc(sizeof(int) * 2);
     int src = 5;
     TEST_ASSERT_EQUAL_PTR(data + 1, hooks_raw_memcpy(&v, data + 1, &src, sizeof(int)));
@@ -133,7 +133,7 @@ void test_hooks_raw_memcpy(void) {
 }
 void test_hooks_raw_memmove(void) {
     cvec_t v;
-    cvec_init(&v, sizeof(char), NULL);
+    cvec_init(&v, sizeof(char), &g_hooks);
     char *data = v.hooks.alloc(10);
     v.hooks.memcpy(data, "test", 4);
     TEST_ASSERT_EQUAL_PTR(data + 3, hooks_raw_memmove(&v, data + 3, data, 4));
@@ -145,6 +145,55 @@ void test_hooks_raw_memmove(void) {
     TEST_ASSERT_NULL(hooks_raw_memmove(&v, NULL, NULL, 0));
     TEST_ASSERT_TRUE(ECVEC_MISSING_HOOK_MEMMOVE & v.error);
 }
+void test_hooks_raw_grow(void) {
+    cvec_t v;
+    cvec_init(&v, sizeof(int), &g_hooks);
+    TEST_ASSERT_EQUAL_size_t(0, hooks_raw_grow(&v, 0, 0, 0));
+    TEST_ASSERT_EQUAL_size_t(2, hooks_raw_grow(&v, 2, 1, SIZE_MAX / 4));
+    TEST_ASSERT_EQUAL_size_t(0, hooks_raw_grow(&v, 4, 5, SIZE_MAX / 4));
+    TEST_ASSERT_GREATER_THAN_size_t(2, hooks_raw_grow(&v, 2, 3, SIZE_MAX / 4));
+    v.hooks.grow = NULL;
+    TEST_ASSERT_EQUAL_size_t(0, hooks_raw_grow(&v, 1, 2, 2));
+    TEST_ASSERT_TRUE(ECVEC_MISSING_HOOK_GROW & v.error);
+}
+void test_hooks_raw_resize(void) {
+    cvec_t v;
+    cvec_init(&v, sizeof(int), &g_hooks);
+    TEST_ASSERT_EQUAL_INT(0, hooks_raw_resize(&v, 0));
+    TEST_ASSERT_EQUAL_size_t(0, v.nmemb | v.nmemb_cap);
+    v.memb_size = SIZE_MAX / 2;
+    TEST_ASSERT_EQUAL_INT(-1, hooks_raw_resize(&v, 3));
+    TEST_ASSERT_TRUE(ECVEC_OVERFLOW & v.error);
+    v.error = ECVEC_NONE;
+    v.memb_size = sizeof(int);
+    TEST_ASSERT_EQUAL_INT(0, hooks_raw_resize(&v, 3));
+    TEST_ASSERT_NOT_NULL(v.data);
+    TEST_ASSERT_GREATER_THAN_size_t(0, v.nmemb_cap);
+    v.nmemb = v.nmemb_cap;
+    TEST_ASSERT_EQUAL_INT(0, hooks_raw_resize(&v, v.nmemb_cap - 2));
+    TEST_ASSERT_EQUAL_size_t(v.nmemb, v.nmemb_cap);
+    TEST_ASSERT_EQUAL_INT(0, hooks_raw_resize(&v, 0));
+    TEST_ASSERT_NULL(v.data);
+    TEST_ASSERT_EQUAL_size_t(0, v.nmemb_cap | v.nmemb);
+}
+void test_hooks_raw_push(void) {
+    cvec_t v;
+    cvec_init(&v, sizeof(int), &g_hooks);
+    TEST_ASSERT_EQUAL_INT(0, hooks_raw_push(&v, &(int){25}));
+    TEST_ASSERT_EQUAL_INT(25, *(int *)v.data);
+    TEST_ASSERT_EQUAL_size_t(1, v.nmemb);
+    v.nmemb = SIZE_MAX;
+    TEST_ASSERT_EQUAL_INT(-1, hooks_raw_push(&v, &(int){2}));
+    TEST_ASSERT_TRUE(ECVEC_OVERFLOW & v.error);
+    v.nmemb = SIZE_MAX - sizeof(int) + 1;
+    TEST_ASSERT_EQUAL_INT(-1, hooks_raw_push(&v, &(int){2}));
+    v.hooks.free(v.data);
+}
+//void test_hooks_raw_pushn(void) {
+//    cvec_t v;
+//    cvec_init(&v, sizeof(int), &g_hooks);
+//    v.hooks.free(v.data);
+//}
 
 int main(void) {
     UNITY_BEGIN();
@@ -156,6 +205,9 @@ int main(void) {
     RUN_TEST(test_hooks_raw_realloc);
     RUN_TEST(test_hooks_raw_memcpy);
     RUN_TEST(test_hooks_raw_memmove);
+    RUN_TEST(test_hooks_raw_grow);
+    RUN_TEST(test_hooks_raw_resize);
+    RUN_TEST(test_hooks_raw_push);
 
     UNITY_END();
 

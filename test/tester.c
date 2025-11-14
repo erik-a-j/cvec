@@ -1,4 +1,5 @@
 #include <stddef.h>
+#include <string.h>
 #include "cvec.h"
 #include "unity.h"
 
@@ -237,6 +238,74 @@ void test_hooks_raw_pushn(void) {
     TEST_ASSERT_TRUE(ECVEC_MISSING_HOOK_PUSHN & v.error);
 
     TEST_ASSERT_NULL(v.data);
+}
+void test_hooks_raw_vpushf(void) {
+    cvec_t v;
+    cvec_init(&v, sizeof(char), &g_hooks);
+    TEST_ASSERT_EQUAL_UINT32(ECVEC_NONE, v.error);
+    TEST_ASSERT_EQUAL_size_t(0, v.nmemb);
+    TEST_ASSERT_NULL(v.data);
+
+    /* ---- Subtest 1: simple format into empty vector ---- */
+    {
+        TEST_ASSERT_EQUAL_INT(0, cvec_pushf(&v, "Hello %s", "world"));
+        TEST_ASSERT_NOT_NULL(v.data);
+
+        char *buf = (char *)v.data;
+        /* nmemb should equal strlen("Hello world") */
+        TEST_ASSERT_EQUAL_size_t(strlen("Hello world"), v.nmemb);
+        TEST_ASSERT_EQUAL_STRING_LEN("Hello world", buf, v.nmemb);
+        /* internal NUL: buf[nmemb] should be '\0' */
+        TEST_ASSERT_EQUAL_CHAR('\0', buf[v.nmemb]);
+        TEST_ASSERT_EQUAL_UINT32(ECVEC_NONE, v.error);
+    }
+
+    /* ---- Subtest 2: append another formatted chunk ---- */
+    {
+        size_t old_nmemb = v.nmemb;
+        TEST_ASSERT_EQUAL_INT(0, cvec_pushf(&v, " %d", 42));
+        TEST_ASSERT_GREATER_THAN_size_t(old_nmemb, v.nmemb);
+
+        char *buf = (char *)v.data;
+        /* Expect "Hello world 42" as the concatenation */
+        const char *expected = "Hello world 42";
+        TEST_ASSERT_EQUAL_size_t(strlen(expected), v.nmemb);
+        TEST_ASSERT_EQUAL_STRING_LEN(expected, buf, v.nmemb);
+        TEST_ASSERT_EQUAL_CHAR('\0', buf[v.nmemb]);
+        TEST_ASSERT_EQUAL_UINT32(ECVEC_NONE, v.error);
+    }
+
+    /* ---- Subtest 3: zero-length output (e.g. empty format) ---- */
+    {
+        size_t old_nmemb = v.nmemb;
+        TEST_ASSERT_EQUAL_INT(0, cvec_pushf(&v, ""));
+        TEST_ASSERT_EQUAL_size_t(old_nmemb, v.nmemb);
+
+        char *buf = (char *)v.data;
+        /* contents should still be the same string, still NUL-terminated */
+        const char *expected = "Hello world 42";
+        TEST_ASSERT_EQUAL_STRING_LEN(expected, buf, v.nmemb);
+        TEST_ASSERT_EQUAL_CHAR('\0', buf[v.nmemb]);
+        TEST_ASSERT_EQUAL_UINT32(ECVEC_NONE, v.error);
+    }
+
+    /* ---- Subtest 4: overflow in nmemb + needed + 1 ---- */
+    {
+        v.error = ECVEC_NONE;
+
+        /* Force nmemb near SIZE_MAX to trigger want < start */
+        v.nmemb = SIZE_MAX;
+        /* we don't care about actual string content, just overflow handling */
+        TEST_ASSERT_EQUAL_INT(-1, cvec_pushf(&v, "x"));
+        TEST_ASSERT_TRUE(ECVEC_OVERFLOW & v.error);
+        /* nmemb must not have changed */
+        TEST_ASSERT_EQUAL_size_t(SIZE_MAX, v.nmemb);
+    }
+
+    /* cleanup buffer using hooks to avoid leaks under sanitizers */
+    if (v.data) {
+        g_hooks.free(v.data);
+    }
 }
 void test_hooks_raw_append(void) {
     cvec_t v;
@@ -498,6 +567,7 @@ void test_ALL_hooks_raw(void) {
     RUN_TEST(test_hooks_raw_resize);
     RUN_TEST(test_hooks_raw_push);
     RUN_TEST(test_hooks_raw_pushn);
+    RUN_TEST(test_hooks_raw_vpushf);
     RUN_TEST(test_hooks_raw_append);
     RUN_TEST(test_hooks_raw_insert);
     RUN_TEST(test_hooks_raw_erase);

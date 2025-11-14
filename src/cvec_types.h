@@ -15,9 +15,10 @@
 #define ECVEC_MISSING_HOOK_RESIZE  (1u << 8)
 #define ECVEC_MISSING_HOOK_PUSH    (1u << 9)
 #define ECVEC_MISSING_HOOK_PUSHN   (1u << 10)
-#define ECVEC_MISSING_HOOK_APPEND  (1u << 11)
-#define ECVEC_MISSING_HOOK_INSERT  (1u << 12)
-#define ECVEC_MISSING_HOOK_ERASE   (1u << 13)
+#define ECVEC_MISSING_HOOK_VPUSHF   (1u << 11)
+#define ECVEC_MISSING_HOOK_APPEND  (1u << 12)
+#define ECVEC_MISSING_HOOK_INSERT  (1u << 13)
+#define ECVEC_MISSING_HOOK_ERASE   (1u << 14)
 typedef uint_least32_t cvec_error_t;
 
 typedef struct cvec_t cvec_t;
@@ -30,11 +31,12 @@ typedef size_t (*grow_fn_t)(size_t old_nmemb, size_t new_nmemb, size_t memb_size
 typedef int (*resize_fn_t)(cvec_t *vec, size_t nmemb);
 typedef int (*push_fn_t)(cvec_t *vec, const void *elem);
 typedef int (*pushn_fn_t)(cvec_t *vec, const void *elem, size_t count);
+typedef int (*vpushf_fn_t)(cvec_t *vec, const char *fmt, va_list ap);
 typedef int (*append_fn_t)(cvec_t *vec, const void *elems, size_t count);
 typedef void *(*insert_fn_t)(cvec_t *vec, const void *elem, size_t index);
 typedef void *(*erase_fn_t)(cvec_t *vec, size_t first, size_t last);
 
-#define CVEC_HOOKS_COUNT 12
+#define CVEC_HOOKS_COUNT 13
 
 typedef struct cvec_hooks_t {
     alloc_fn_t alloc;
@@ -46,6 +48,7 @@ typedef struct cvec_hooks_t {
     resize_fn_t resize;
     push_fn_t push;
     pushn_fn_t pushn;
+    vpushf_fn_t vpushf;
     append_fn_t append;
     insert_fn_t insert;
     erase_fn_t erase;

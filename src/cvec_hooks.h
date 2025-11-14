@@ -8,6 +8,7 @@ size_t default_cvec_grow(size_t old_nmemb, size_t new_nmemb, size_t memb_size);
 int default_cvec_resize(cvec_t *vec, size_t nmemb);
 int default_cvec_push(cvec_t *vec, const void *elem);
 int default_cvec_pushn(cvec_t *vec, const void *elem, size_t count);
+int default_cvec_vpushf(cvec_t *vec, const char *fmt, va_list ap) __attribute__((format(printf, 2, 0)));
 int default_cvec_append(cvec_t *vec, const void *elems, size_t count);
 void *default_cvec_insert(cvec_t *vec, const void *elem, size_t index);
 void *default_cvec_erase(cvec_t *vec, size_t first, size_t last);
@@ -38,6 +39,7 @@ static inline int cvec_hookscmp(cvec_hooks_t *h1, cvec_hooks_t *h2) {
     HOOKCMP(resize);
     HOOKCMP(push);
     HOOKCMP(pushn);
+    HOOKCMP(vpushf);
     HOOKCMP(append);
     HOOKCMP(insert);
     HOOKCMP(erase);
@@ -109,6 +111,13 @@ static inline int hooks_raw_pushn(cvec_t *vec, const void *elem, size_t count) {
     }
     return vec->hooks.pushn(vec, elem, count);
 }
+static inline int hooks_raw_vpushf(cvec_t *vec, const char *fmt, va_list ap) {
+    if (!vec->hooks.vpushf) {
+        vec->error |= ECVEC_MISSING_HOOK_VPUSHF;
+        return -1;
+    }
+    return vec->hooks.vpushf(vec, fmt, ap);
+}
 static inline int hooks_raw_append(cvec_t *vec, const void *elems, size_t count) {
     if (!vec->hooks.append) {
         vec->error |= ECVEC_MISSING_HOOK_APPEND;
@@ -140,6 +149,7 @@ static inline void *hooks_raw_erase(cvec_t *vec, size_t first, size_t last) {
 #define hooks_raw_resize(vec, nmemb)                         _hooks_raw_resize((vec), (nmemb))
 #define hooks_raw_push(vec, elem)                            _hooks_raw_push((vec), (elem))
 #define hooks_raw_pushn(vec, elem, count)                    _hooks_raw_pushn((vec), (elem), (count))
+#define hooks_raw_vpushf(vec, fmt, ap)                       _hooks_raw_vpushf((vec), (fmt), (ap))
 #define hooks_raw_append(vec, elems, count)                  _hooks_raw_append((vec), (elems), (count))
 #define hooks_raw_insert(vec, elem, index)                   _hooks_raw_insert((vec), (elem), (index))
 #define hooks_raw_erase(vec, first, last)                    _hooks_raw_erase((vec), (first), (last))
@@ -224,12 +234,21 @@ static inline void *hooks_raw_erase(cvec_t *vec, size_t first, size_t last) {
     }                                                               \
     _r;                                                             \
 })
+#define _hooks_raw_vpushf(vec, fmt, ap) ({                          \
+    int _r = -1; cvec_t *_v = (vec);                                \
+    if (!_v->hooks.vpushf) {                                        \
+        _v->error |= ECVEC_MISSING_HOOK_VPUSHF;                     \
+    } else {                                                        \
+		_r = _v->hooks.vpushf(_v, fmt, ap);                         \
+	}                                                               \
+    _r;                                                             \
+})
 #define _hooks_raw_append(vec, elems, count) ({                     \
     int _r = -1; cvec_t *_v = (vec);                                \
     if (!_v->hooks.append) {                                        \
         _v->error |= ECVEC_MISSING_HOOK_APPEND;                     \
     } else {                                                        \
-		_r = vec->hooks.append(vec, elems, count);                  \
+		_r = _v->hooks.append(_v, elems, count);                    \
 	}                                                               \
     _r;                                                             \
 })

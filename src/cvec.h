@@ -1,6 +1,7 @@
 #ifndef CVEC_H
 #define CVEC_H
 #include <assert.h>
+#include <stdarg.h>
 #include "cvec_types.h"
 #include "cvec_hooks.h"
 
@@ -22,7 +23,6 @@ static inline int cvec_reserve(cvec_t *vec, size_t nmemb) {
     if (nmemb == 0 || nmemb <= vec->nmemb_cap) {
         return 0;
     }
-
     size_t new_nmemb = hooks_raw_grow(vec, vec->nmemb_cap, nmemb, vec->memb_size);
     if (new_nmemb == 0) {
         return -1;
@@ -37,6 +37,13 @@ static inline int cvec_push(cvec_t *vec, const void *elem) {
 }
 static inline int cvec_pushn(cvec_t *vec, const void *elem, size_t count) {
     return hooks_raw_pushn(vec, elem, count);
+}
+static inline int cvec_pushf(cvec_t *vec, const char *fmt, ...) {
+    va_list ap;
+    va_start(ap, fmt);
+    int r = hooks_raw_vpushf(vec, fmt, ap);
+    va_end(ap);
+    return r;
 }
 static inline int cvec_append(cvec_t *vec, const void *elems, size_t count) {
     return hooks_raw_append(vec, elems, count);

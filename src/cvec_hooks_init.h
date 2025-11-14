@@ -52,6 +52,7 @@ static inline void CVEC_HOOKS_INIT(cvec_hooks_t *hooks, int flag) {
         .resize = default_cvec_resize,
         .push = default_cvec_push,
         .pushn = default_cvec_pushn,
+        .append = default_cvec_append,
         .insert = default_cvec_insert,
         .erase = default_cvec_erase,
     };
@@ -85,6 +86,9 @@ static inline void CVEC_HOOKS_INIT(cvec_hooks_t *hooks, int flag) {
         }
         if (!hooks->pushn) {
             hooks->pushn = default_hooks.pushn;
+        }
+        if (!hooks->append) {
+            hooks->append = default_hooks.append;
         }
         if (!hooks->insert) {
             hooks->insert = default_hooks.insert;

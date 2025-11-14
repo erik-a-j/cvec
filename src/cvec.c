@@ -1,5 +1,7 @@
 #include <assert.h>
+#include <stdarg.h>
 #include <stdint.h>
+#include <stdio.h>
 #include "cvec.h"
 
 size_t default_cvec_grow(size_t old_nmemb, size_t new_nmemb, size_t memb_size) {
@@ -99,6 +101,35 @@ int default_cvec_pushn(cvec_t *vec, const void *elem, size_t count) {
     }
 
     vec->nmemb = want;
+    return 0;
+}
+int default_cvec_vpushf(cvec_t *vec, const char *fmt, va_list ap) {
+    assert(vec->memb_size == 1 && "memb_size must be one!");
+
+    va_list ap2;
+    va_copy(ap2, ap);
+    int needed = vsnprintf(NULL, 0, fmt, ap2);
+    va_end(ap2);
+    if (needed < 0) {
+        return -1;
+    }
+
+    size_t start = vec->nmemb;
+    size_t want = start + (size_t)needed + 1;
+    if (want < start) {
+        vec->error |= ECVEC_OVERFLOW;
+        return -1;
+    }
+    if (cvec_reserve(vec, want) != 0) {
+        return -1;
+    }
+
+    int written = vsnprintf((char *)vec->data + start, (size_t)needed + 1, fmt, ap);
+    if (written < 0) {
+        return -1;
+    }
+
+    vec->nmemb += (size_t)written;
     return 0;
 }
 int default_cvec_append(cvec_t *vec, const void *elems, size_t count) {

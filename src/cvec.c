@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <stdint.h>
 #include "cvec.h"
 
@@ -24,6 +25,7 @@ size_t default_cvec_grow(size_t old_nmemb, size_t new_nmemb, size_t memb_size) {
 }
 
 int default_cvec_resize(cvec_t *vec, size_t nmemb) {
+    assert(vec->memb_size > 0 && "memb_size must not be zero!");
     if (nmemb == vec->nmemb_cap) {
         return 0;
     }
@@ -49,6 +51,7 @@ int default_cvec_resize(cvec_t *vec, size_t nmemb) {
 }
 
 int default_cvec_push(cvec_t *vec, const void *elem) {
+    assert(vec->memb_size > 0 && "memb_size must not be zero!");
     if (vec->nmemb == SIZE_MAX) {
         vec->error |= ECVEC_OVERFLOW;
         return -1;
@@ -65,6 +68,7 @@ int default_cvec_push(cvec_t *vec, const void *elem) {
     return 0;
 }
 int default_cvec_pushn(cvec_t *vec, const void *elem, size_t count) {
+    assert(vec->memb_size > 0 && "memb_size must not be zero!");
     if (count == 0) {
         return 0;
     }
@@ -94,17 +98,18 @@ int default_cvec_pushn(cvec_t *vec, const void *elem, size_t count) {
         }
         written += to_copy;
     }
-    vec->nmemb = want;
 
+    vec->nmemb = want;
     return 0;
 }
 
 void *default_cvec_insert(cvec_t *vec, const void *elem, size_t index) {
+    assert(vec->memb_size > 0 && "memb_size must not be zero!");
     if (index > vec->nmemb) {
         vec->error |= ECVEC_INVALID_INDEX;
         return NULL;
     }
-    if (vec->memb_size == 0 || vec->nmemb == SIZE_MAX || index > SIZE_MAX / vec->memb_size) {
+    if (vec->nmemb == SIZE_MAX || index > SIZE_MAX / vec->memb_size) {
         vec->error |= ECVEC_OVERFLOW;
         return NULL;
     }
@@ -137,6 +142,7 @@ void *default_cvec_insert(cvec_t *vec, const void *elem, size_t index) {
 }
 
 void *default_cvec_erase(cvec_t *vec, size_t first, size_t last) {
+    assert(vec->memb_size > 0 && "memb_size must not be zero!");
     if (vec->nmemb == 0) {
         return vec->data;
     }
@@ -156,10 +162,6 @@ void *default_cvec_erase(cvec_t *vec, size_t first, size_t last) {
     size_t count = last - first + 1;
     size_t tail_elems = vec->nmemb - (last + 1);
 
-    if (vec->memb_size == 0) {
-        vec->error |= ECVEC_OVERFLOW;
-        return NULL;
-    }
     if (first > SIZE_MAX / vec->memb_size) {
         vec->error |= ECVEC_OVERFLOW;
         return NULL;

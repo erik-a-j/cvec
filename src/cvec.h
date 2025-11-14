@@ -38,6 +38,9 @@ static inline int cvec_push(cvec_t *vec, const void *elem) {
 static inline int cvec_pushn(cvec_t *vec, const void *elem, size_t count) {
     return hooks_raw_pushn(vec, elem, count);
 }
+static inline int cvec_append(cvec_t *vec, const void *elems, size_t count) {
+    return hooks_raw_append(vec, elems, count);
+}
 static inline void *cvec_insert(cvec_t *vec, const void *elem, size_t index) {
     return hooks_raw_insert(vec, elem, index);
 }

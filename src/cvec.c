@@ -23,7 +23,6 @@ size_t default_cvec_grow(size_t old_nmemb, size_t new_nmemb, size_t memb_size) {
     }
     return n;
 }
-
 int default_cvec_resize(cvec_t *vec, size_t nmemb) {
     assert(vec->memb_size > 0 && "memb_size must not be zero!");
     if (nmemb == vec->nmemb_cap) {
@@ -102,7 +101,30 @@ int default_cvec_pushn(cvec_t *vec, const void *elem, size_t count) {
     vec->nmemb = want;
     return 0;
 }
+int default_cvec_append(cvec_t *vec, const void *elems, size_t count) {
+    assert(vec->memb_size > 0 && "memb_size must not be zero!");
+    if (count == 0) {
+        return 0;
+    }
+    size_t start = vec->nmemb;
+    size_t want = start + count;
+    if (want < start || count > SIZE_MAX / vec->memb_size) {
+        vec->error |= ECVEC_OVERFLOW;
+        return -1;
+    }
+    if (cvec_reserve(vec, want) != 0) {
+        return -1;
+    }
 
+    void *dst = (char *)vec->data + start * vec->memb_size;
+    void *res_memcpy = hooks_raw_memcpy(vec, dst, elems, count * vec->memb_size);
+    if (!res_memcpy || res_memcpy != dst) {
+        return -1;
+    }
+
+    vec->nmemb = want;
+    return 0;
+}
 void *default_cvec_insert(cvec_t *vec, const void *elem, size_t index) {
     assert(vec->memb_size > 0 && "memb_size must not be zero!");
     if (index > vec->nmemb) {

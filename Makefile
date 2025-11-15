@@ -68,13 +68,31 @@ IGNORE = `grep -s IGNORE $(RESDIR)/*.txt`
 
 
 CFLAGS_SRC   := -I$(SRCDIR)
-CFLAGS_TEST  := -I$(SRCDIR) -I$(TSRCDIR) -I$(USRCDIR) -Wno-missing-prototypes -Wno-bad-function-cast
+CFLAGS_TEST  := -I$(SRCDIR) -I$(TSRCDIR) -I$(USRCDIR) -Wno-missing-prototypes -Wno-bad-function-cast -Wno-format-zero-length
 CFLAGS_UNITY := -I$(USRCDIR) -Wno-all -Wno-pedantic -Wno-conversion -Wno-float-equal -Wno-bad-function-cast
 
 # ── Default ───────────────────────────────────────────────────────────────────
-.PHONY: all tests clean
+.PHONY: all c11 c17 c23 c2y gnu gnu11 gnu17 gnu23 gnu2y tests clean
 .DELETE_ON_ERROR:
-all: tests
+all: clean tests
+c11:
+	$(MAKE) CSTD=c11
+c17:
+	$(MAKE) CSTD=c17
+c23:
+	$(MAKE) CSTD=c23
+c2y:
+	$(MAKE) CSTD=c2y
+gnu:
+	$(MAKE) CSTD=gnu99
+gnu11:
+	$(MAKE) CSTD=gnu11
+gnu17:
+	$(MAKE) CSTD=gnu17
+gnu23:
+	$(MAKE) CSTD=gnu23
+gnu2y:
+	$(MAKE) CSTD=gnu2y
 
 clean:
 	@echo "  CLEAN   objects & deps"

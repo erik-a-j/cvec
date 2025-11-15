@@ -1,3 +1,6 @@
+#ifndef CVEC_H
+#error "cvec.h must be included first"
+#endif
 #ifndef CVEC_TYPES_H
 #define CVEC_TYPES_H
 #include <stddef.h>
@@ -15,7 +18,7 @@
 #define ECVEC_MISSING_HOOK_RESIZE  (1u << 8)
 #define ECVEC_MISSING_HOOK_PUSH    (1u << 9)
 #define ECVEC_MISSING_HOOK_PUSHN   (1u << 10)
-#define ECVEC_MISSING_HOOK_VPUSHF   (1u << 11)
+#define ECVEC_MISSING_HOOK_VPUSHF  (1u << 11)
 #define ECVEC_MISSING_HOOK_APPEND  (1u << 12)
 #define ECVEC_MISSING_HOOK_INSERT  (1u << 13)
 #define ECVEC_MISSING_HOOK_ERASE   (1u << 14)

@@ -1,3 +1,4 @@
+#include <stdarg.h>
 #include <stddef.h>
 #include <string.h>
 #include "cvec.h"
@@ -85,6 +86,147 @@ void test_cvec_init(void) {
     TEST_ASSERT_EQUAL_size_t(0, v.nmemb);
     TEST_ASSERT_EQUAL_size_t(ECVEC_NONE, v.error);
 }
+
+void test_default_cvec_grow(void) {
+    TEST_ASSERT_EQUAL_size_t(0, default_cvec_grow(0, 0, 0));
+    TEST_ASSERT_EQUAL_size_t(2, default_cvec_grow(2, 1, SIZE_MAX / 4));
+    TEST_ASSERT_EQUAL_size_t(0, default_cvec_grow(4, 5, SIZE_MAX / 4));
+    TEST_ASSERT_GREATER_THAN_size_t(2, default_cvec_grow(2, 3, SIZE_MAX / 4));
+}
+void test_default_cvec_resize(void) {
+    cvec_t v;
+    cvec_init(&v, sizeof(int), &g_hooks);
+    TEST_ASSERT_EQUAL_INT(0, default_cvec_resize(&v, 0));
+    TEST_ASSERT_EQUAL_size_t(0, v.nmemb | v.nmemb_cap);
+
+    v.memb_size = SIZE_MAX / 2;
+    TEST_ASSERT_EQUAL_INT(-1, default_cvec_resize(&v, 3));
+    TEST_ASSERT_TRUE(ECVEC_OVERFLOW & v.error);
+
+    v.error = ECVEC_NONE;
+    v.memb_size = sizeof(int);
+    TEST_ASSERT_EQUAL_INT(0, default_cvec_resize(&v, 3));
+    TEST_ASSERT_NOT_NULL(v.data);
+    TEST_ASSERT_GREATER_THAN_size_t(0, v.nmemb_cap);
+
+    v.nmemb = v.nmemb_cap;
+    TEST_ASSERT_EQUAL_INT(0, default_cvec_resize(&v, v.nmemb_cap - 2));
+    TEST_ASSERT_EQUAL_size_t(v.nmemb, v.nmemb_cap);
+
+    TEST_ASSERT_EQUAL_INT(0, default_cvec_resize(&v, 0));
+    TEST_ASSERT_NULL(v.data);
+    TEST_ASSERT_EQUAL_size_t(0, v.nmemb_cap | v.nmemb);
+}
+void test_default_cvec_push(void) {
+    cvec_t v;
+    cvec_init(&v, sizeof(int), &g_hooks);
+    TEST_ASSERT_EQUAL_INT(0, default_cvec_push(&v, &(int){25}));
+    TEST_ASSERT_EQUAL_INT(25, *(int *)v.data);
+    TEST_ASSERT_EQUAL_size_t(1, v.nmemb);
+    v.hooks.free(v.data);
+
+    v.nmemb = SIZE_MAX;
+    TEST_ASSERT_EQUAL_INT(-1, default_cvec_push(&v, &(int){2}));
+    TEST_ASSERT_TRUE(ECVEC_OVERFLOW & v.error);
+
+    v.nmemb = SIZE_MAX - sizeof(int) + 1;
+    TEST_ASSERT_EQUAL_INT(-1, default_cvec_push(&v, &(int){2}));
+}
+void test_default_cvec_pushn(void) {
+    cvec_t v;
+    cvec_init(&v, sizeof(int), &g_hooks);
+    TEST_ASSERT_EQUAL_UINT32(ECVEC_NONE, v.error);
+    TEST_ASSERT_EQUAL_size_t(0, v.nmemb);
+
+    TEST_ASSERT_EQUAL_INT(0, default_cvec_pushn(&v, &(int){42}, 0));
+    TEST_ASSERT_EQUAL_size_t(0, v.nmemb);
+    TEST_ASSERT_EQUAL_UINT32(ECVEC_NONE, v.error);
+
+    TEST_ASSERT_EQUAL_INT(0, default_cvec_pushn(&v, &(int){7}, 5));
+    TEST_ASSERT_EQUAL_size_t(5, v.nmemb);
+
+    int *data = (int *)v.data;
+    for (size_t i = 0; i < v.nmemb; ++i) { TEST_ASSERT_EQUAL_INT(7, data[i]); }
+
+    v.hooks.free(v.data);
+}
+
+__attribute__((format(printf, 2, 3))) int default_cvec_vpushf_wrapper(cvec_t *vec, const char *fmt, ...) {
+    va_list ap;
+    va_start(ap, fmt);
+    int r = default_cvec_vpushf(vec, fmt, ap);
+    va_end(ap);
+    return r;
+}
+void test_default_cvec_vpushf(void) {
+    cvec_t v;
+    cvec_init(&v, sizeof(char), &g_hooks);
+    TEST_ASSERT_EQUAL_UINT32(ECVEC_NONE, v.error);
+    TEST_ASSERT_EQUAL_size_t(0, v.nmemb);
+    TEST_ASSERT_NULL(v.data);
+
+    /* ---- Subtest 1: simple format into empty vector ---- */
+    {
+        TEST_ASSERT_EQUAL_INT(0, default_cvec_vpushf_wrapper(&v, "Hello %s", "world"));
+        TEST_ASSERT_NOT_NULL(v.data);
+
+        char *buf = (char *)v.data;
+        /* nmemb should equal strlen("Hello world") */
+        TEST_ASSERT_EQUAL_size_t(strlen("Hello world"), v.nmemb);
+        TEST_ASSERT_EQUAL_STRING_LEN("Hello world", buf, v.nmemb);
+        /* internal NUL: buf[nmemb] should be '\0' */
+        TEST_ASSERT_EQUAL_CHAR('\0', buf[v.nmemb]);
+        TEST_ASSERT_EQUAL_UINT32(ECVEC_NONE, v.error);
+    }
+
+    /* ---- Subtest 2: append another formatted chunk ---- */
+    {
+        size_t old_nmemb = v.nmemb;
+        TEST_ASSERT_EQUAL_INT(0, default_cvec_vpushf_wrapper(&v, " %d", 42));
+        TEST_ASSERT_GREATER_THAN_size_t(old_nmemb, v.nmemb);
+
+        char *buf = (char *)v.data;
+        /* Expect "Hello world 42" as the concatenation */
+        const char *expected = "Hello world 42";
+        TEST_ASSERT_EQUAL_size_t(strlen(expected), v.nmemb);
+        TEST_ASSERT_EQUAL_STRING_LEN(expected, buf, v.nmemb);
+        TEST_ASSERT_EQUAL_CHAR('\0', buf[v.nmemb]);
+        TEST_ASSERT_EQUAL_UINT32(ECVEC_NONE, v.error);
+    }
+
+    /* ---- Subtest 3: zero-length output (e.g. empty format) ---- */
+    {
+        size_t old_nmemb = v.nmemb;
+        TEST_ASSERT_EQUAL_INT(0, default_cvec_vpushf_wrapper(&v, ""));
+        TEST_ASSERT_EQUAL_size_t(old_nmemb, v.nmemb);
+
+        char *buf = (char *)v.data;
+        /* contents should still be the same string, still NUL-terminated */
+        const char *expected = "Hello world 42";
+        TEST_ASSERT_EQUAL_STRING_LEN(expected, buf, v.nmemb);
+        TEST_ASSERT_EQUAL_CHAR('\0', buf[v.nmemb]);
+        TEST_ASSERT_EQUAL_UINT32(ECVEC_NONE, v.error);
+    }
+
+    /* ---- Subtest 4: overflow in nmemb + needed + 1 ---- */
+    {
+        v.error = ECVEC_NONE;
+
+        /* Force nmemb near SIZE_MAX to trigger want < start */
+        v.nmemb = SIZE_MAX;
+        /* we don't care about actual string content, just overflow handling */
+        TEST_ASSERT_EQUAL_INT(-1, default_cvec_vpushf_wrapper(&v, "x"));
+        TEST_ASSERT_TRUE(ECVEC_OVERFLOW & v.error);
+        /* nmemb must not have changed */
+        TEST_ASSERT_EQUAL_size_t(SIZE_MAX, v.nmemb);
+    }
+
+    /* cleanup buffer using hooks to avoid leaks under sanitizers */
+    if (v.data) {
+        g_hooks.free(v.data);
+    }
+}
+
 void test_hooks_raw_free(void) {
     cvec_t v;
     cvec_init(&v, sizeof(int), &g_hooks);
@@ -301,6 +443,10 @@ void test_hooks_raw_vpushf(void) {
         /* nmemb must not have changed */
         TEST_ASSERT_EQUAL_size_t(SIZE_MAX, v.nmemb);
     }
+
+    v.hooks.vpushf = NULL;
+    TEST_ASSERT_EQUAL_INT(-1, cvec_pushf(&v, "x"));
+    TEST_ASSERT_TRUE(ECVEC_MISSING_HOOK_VPUSHF & v.error);
 
     /* cleanup buffer using hooks to avoid leaks under sanitizers */
     if (v.data) {
@@ -557,6 +703,13 @@ void test_hooks_raw_erase(void) {
     g_hooks.free(v.data);
 }
 
+void test_ALL_default(void) {
+    RUN_TEST(test_default_cvec_grow);
+    RUN_TEST(test_default_cvec_resize);
+    RUN_TEST(test_default_cvec_push);
+    RUN_TEST(test_default_cvec_pushn);
+    RUN_TEST(test_default_cvec_vpushf);
+}
 void test_ALL_hooks_raw(void) {
     RUN_TEST(test_hooks_raw_free);
     RUN_TEST(test_hooks_raw_alloc);
@@ -578,6 +731,7 @@ int main(void) {
 
     RUN_TEST(test_cvec_hooks_init);
     RUN_TEST(test_cvec_init);
+    test_ALL_default();
     test_ALL_hooks_raw();
 
     UNITY_END();
